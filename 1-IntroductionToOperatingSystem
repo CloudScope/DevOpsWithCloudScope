@@ -67,6 +67,63 @@ $ tail -2 file.txt (last 2 line)
 $ head -2 file.txt (first 2 line)
 $ tail -f file.txt (get appends file)
 
+Get disk space:
+$ df
+$ df -h
+
+file size:
+$ du
+$ du -sh
+
+Get memory details:
+$ free
+$ free -m
+$ free -h
+
+Check process:
+$ ps
+$ ps -aux
+$ top
+
+VIM Editor:
+===========
+
+-> Normal Mode
+-> Insert Mode
+-> Visual Mode
+-> Command line Mode
+
+
+Press I for insert mode
+Press Esc for out of any mode
+Press V for Visual mode
+Press : for commandline mode
+
+:wq -> save the content and quit
+:q -> quit
+:q! -> quit forcefully without saving
+:wq! -> save the content and quit forcefull
+
+0: Beging of the line
+$: End of the line
+w: crusher next word
+dd: delete the line
+d$: delete till end of line
+/: serch 
+?: search after the cursor
+n: next occurance
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
