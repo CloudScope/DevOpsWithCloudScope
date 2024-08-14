@@ -113,7 +113,7 @@ d$: delete till end of line
 ?: search after the cursor
 n: next occurance
 
-
+:%s/fruit/Raghu/g -> replace fruit with Raghu
 
 
 
