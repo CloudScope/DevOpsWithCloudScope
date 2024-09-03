@@ -1,3 +1,5 @@
+DevOps Class - 7 Assignment - 1
+
 Objective:
 
 In the script file calculate_area.sh already present on path /home/user write a script that calculates the area of various geometric shapes based on user input. The script should support multiple interaction modes, including a help menu, interactive input, and command-line arguments.
