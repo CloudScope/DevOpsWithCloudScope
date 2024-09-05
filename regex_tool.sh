@@ -117,4 +117,130 @@ Error 500: Internal Server Error
 Ans:
 
 
+#!/bin/bash
+
+display_help() {
+    echo "Usage: $0 [-h] [-i] [--file filename] [operation regex [replacement]]"
+    echo
+    echo "Perform regex-based operations on text files."
+    echo
+    echo "Options:"
+    echo "  -h               Display this help message."
+    echo "  -i               Interactive mode."
+    echo "  --file filename  Specify the file to operate on."
+    echo
+    echo "Operations:"
+    echo "  search regex          Search for patterns using regex and display all matching lines."
+    echo "  replace regex new     Replace occurrences of regex with new string."
+    echo "  extract regex         Extract and display specific data using regex."
+}
+
+interactive_mode() {
+    echo "Enter the filename:"
+    read -r filename
+
+    if [[ ! -f "$filename" ]]; then
+        echo "Error: File not found."
+        exit 1
+    fi
+
+    if [[ ! -r "$filename" ]]; then
+        echo "Error: File is not readable."
+        exit 1
+    fi
+
+    echo "Choose operation (search, replace, extract):"
+    read -r operation
+    echo "Enter regex:"
+    read -r regex
+
+    case $operation in
+        search)
+            grep -iP "$regex" "$filename"
+            ;;
+        replace)
+            echo "Enter replacement text:"
+            read -r replacement
+            sed -i -r "s/$regex/$replacement/g" "$filename"
+            ;;
+        extract)
+            grep -oP "$regex" "$filename"
+            ;;
+        *)
+            echo "Invalid operation."
+            exit 1
+            ;;
+    esac
+}
+
+while [[ "$1" =~ ^- && ! "$1" == "--" ]]; do
+    case $1 in
+        -h | --help)
+            display_help
+            exit
+            ;;
+        -i | --interactive)
+            INTERACTIVE_MODE=1
+            ;;
+        --file)
+            shift
+            FILE="$1"
+            ;;
+    esac
+    shift
+done
+if [[ "$1" == '--' ]]; then shift; fi
+
+if [[ "$INTERACTIVE_MODE" == "1" ]]; then
+    interactive_mode
+else
+    OPERATION="$1"
+    REGEX="$2"
+    REPLACEMENT="$3"
+
+    if [ -z "$FILE" ]; then
+        echo "File not specified. Use --file to specify the file."
+        display_help
+        exit 1
+    fi
+
+    if [[ ! -f "$FILE" ]]; then
+        echo "Error: File not found."
+        exit 1
+    fi
+
+    if [[ ! -r "$FILE" ]]; then
+        echo "Error: File is not readable."
+        exit 1
+    fi
+
+    if [[ -z "$OPERATION" || -z "$REGEX" ]]; then
+        echo "Invalid operation or insufficient arguments."
+        display_help
+        exit 1
+    fi
+
+    case $OPERATION in
+        search)
+            grep -iP "$REGEX" "$FILE"
+            ;;
+        replace)
+            if [ -z "$REPLACEMENT" ]; then
+                echo "Replacement text required for replace operation."
+                exit 1
+            fi
+            sed -i -r "s/$REGEX/$REPLACEMENT/g" "$FILE"
+            ;;
+        extract)
+            grep -oP "$REGEX" "$FILE"
+            ;;
+        *)
+            echo "Invalid operation or insufficient arguments."
+            display_help
+            exit 1
+            ;;
+    esac
+fi
+
+
 
