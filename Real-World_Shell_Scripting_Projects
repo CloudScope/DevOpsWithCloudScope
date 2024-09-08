@@ -129,3 +129,56 @@ Send the report via email
 
 send_email $HTML_REPORT || error_exit “Failed to send email.”
 echo “System health report generated and sent successfully.”
+
+
+DevOps Class - 9-Assignment - 3
+
+Task: 
+
+Create a script system_maintenance.sh that updates system packages, removes unnecessary files, and cleans up the system.
+Objective: Automate regular updates and maintenance tasks on Linux servers to maintain their security and performance.
+
+Requirements:
+
+Package Updates: Update all installed packages using the system’s package manager.
+Cleanup Tasks: Clean up old cached packages and unused dependencies. Remove old kernel versions, keeping only the current and one backup kernel.
+Logging: Log all performed actions and any issues encountered during the process.
+Learning Goals: This assignment focuses on scripting for system maintenance and update procedures.
+Deliverable: Submit the system_maintenance.sh script that fulfills the above requirements.
+
+Ans:
+
+
+#!/bin/bash
+
+
+sudo apt update -y
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
+CURRENT_KERNEL=$(uname -r | sed 's/-generic//')
+log "Current running kernel: $CURRENT_KERNEL"
+
+# List installed kernels, exclude current and latest backup
+INSTALLED_KERNELS=$(dpkg --list | grep 'linux-image-[0-9]' | awk '{ print $2 }' | grep -v "${CURRENT_KERNEL}")
+
+# Get the latest backup kernel
+LATEST_BACKUP=$(dpkg --list | grep 'linux-image-[0-9]' | awk '{ print $2 }' | grep -v "${CURRENT_KERNEL}" | tail -n 1)
+log "Latest backup kernel identified: $LATEST_BACKUP"
+# Remove old kernels, excluding current and latest backup
+for KERNEL in ${INSTALLED_KERNELS}; do
+    if [ "$KERNEL" != "$LATEST_BACKUP" ]; then
+        log "Attempting to remove $KERNEL"
+        if sudo apt-get remove --purge -y $KERNEL; then
+           log "Successfully removed $KERNEL"
+        else
+           log "ERROR: Failed to remove $KERNEL"
+        fi
+    fi
+done
+
+# Clean up
+sudo apt-get autoremove --purge -y
+sudo apt-get clean
