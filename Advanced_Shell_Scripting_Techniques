@@ -1,0 +1,138 @@
+DevOps Class - 8 Assignment - 1
+
+Objective:
+
+The goal is to write a script in /home/user/server_health_check.sh that monitors system processes and logs memory usage. The script will accomplish the following tasks:
+
+TASK: Logging Process ID and Memory Usage
+
+The script should continuously monitor every 2 sec the system processes and log the Process ID (PID) and memory usage for each process.
+The information should be logged in the format PID_ID Memory in a file located at /home/user/health_reports/server_health.log.
+This log file will help track the memory usage of various processes over time.
+
+Expected Output:
+A file named server_health.log located in /home/user/health_reports/, which contains entries in the format PID_ID Memory for each monitored process.
+
+Sample Output:
+1234 45MB
+5678 30MB
+9101 100MB
+
+Ans:
+
+#!/bin/bash
+
+SERVER_HEALTH_LOG="/home/user/health_reports/server_health.log"
+
+monitor_memory_usage() {
+    > $SERVER_HEALTH_LOG
+
+    while true; do
+        ps -eo pid,rss --sort=-rss | awk 'NR>1 {print $1, $2}' | while read -r pid rss; do
+            mem_mb=$((rss / 1024))
+
+            echo "$pid ${mem_mb}MB" >> $SERVER_HEALTH_LOG
+
+        done
+
+        sleep 5
+    done
+}
+monitor_memory_usage
+
+
+DevOps Class - 8 Assignment - 2
+
+Objective:
+Optimize the previous script to alert whenever certain memory limit exceeds.
+Task: Alerting on Memory Usage Exceeding 20MB
+
+The script should monitor the memory usage of each process and log any process that consumes more than 20MB of memory.
+If a process exceeds 20MB of memory usage, the script should log the Process ID (PID) and memory usage in a file named /home/user/health_reports/alert.log.
+
+Only processes that exceed the 20MB threshold should be logged in the alert file. Processes below this threshold should not appear in the alert log.
+
+Expected Output:
+A file named alert.log located in /home/user/health_reports/, which logs entries in the format PID_ID Memory for processes that exceed 50MB of memory usage.
+
+Sample Output:
+534 23MB
+1129 58MB
+
+Ans:
+
+#!/bin/bash
+
+SERVER_HEALTH_LOG="/home/user/health_reports/server_health.log"
+ALERT_LOG="/home/user/health_reports/alert.log"
+
+monitor_memory_usage() {
+    > $SERVER_HEALTH_LOG
+    > $ALERT_LOG
+
+    while true; do
+        ps -eo pid,rss --sort=-rss | awk 'NR>1 {print $1, $2}' | while read -r pid rss; do
+            mem_mb=$((rss / 1024))
+
+            echo "$pid ${mem_mb}MB" >> $SERVER_HEALTH_LOG
+
+            if [ $mem_mb -gt 20 ]; then
+                echo "$pid ${mem_mb}MB" >> $ALERT_LOG
+            fi
+        done
+
+        sleep 5
+    done
+}
+
+monitor_memory_usage
+
+
+DevOps Class - 8 Assignment - 3
+
+Objective:
+Extending the previous question, regular logs are being stored in the logfile.log file. Your task is to write a script that fulfills the below tasks:
+TASK - 1:
+Redirect only the errors from this log file to the error_reports/website_health.log file. Remember, error storing should be continuous and dynamic.
+Tip: Add a 20-second delay in your script to pass the test case.
+Output:
+2024-07-22 23:11:15 2024-07-22 23:10:55 ERROR: This is error number 1.
+2024-07-22 23:11:15 2024-07-22 23:11:00 ERROR: This is error number 2.
+2024-07-22 23:11:15 2024-07-22 23:11:05 ERROR: This is error number 3.
+
+TASK - 2:
+Based on the above errors received, prepare an error report and store the necessary details in the error_reports/website_report.log file.
+Output Format:
+Error Report - Mon Jan 2 20:10:20 UTC 2023
+Total Errors: 9
+Latest Error: 2023-01-02 20:10:16 2023-01-02 20:10:16 ERROR: This is error number 21.
+
+#!/bin/bash
+LOG_FILE=”/home/user/logfile.log”
+ERROR_LOG=”/home/user/error_reports/website_health.log”
+REPORT_FILE=”/home/user/error_reports/website_report.log”
+capture_errors() {
+    tail -f “$LOG_FILE” | while read line; do
+        if [[ “$line” =~ ERROR ]]; then
+           echo “(date‘+line” » “$ERROR_LOG”
+        fi
+    done
+}
+generate_report() {
+    local error_count=(grep−c“ERROR”“ERROR_LOG”)
+    local latest_error=(tail−n1“ERROR_LOG”)
+    echo "Error Report - $(date)" > "$REPORT_FILE"
+    echo "Total Errors: $error_count" >> "$REPORT_FILE"
+    echo "Latest Error: $latest_error" >> "$REPORT_FILE" 
+}
+capture_errors &
+while true; do
+    sleep 20
+    generate_report
+done
+
+
+
+
+
+
