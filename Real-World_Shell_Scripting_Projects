@@ -1,0 +1,131 @@
+DevOps Class - 9 Assignment - 1
+
+There is script present in your system server_setup.sh, you need to edit this script in order to these below tasks.
+Task 1: Software Installation and System Update
+Objective: Update the server with necessary software and update all existing packages.
+Update and Upgrade: Start by refreshing the package lists and upgrading all installed packages to enhance both security and functionality.
+Software Installation: Install essential software such as Nginx for web serving, Apache2-utils for Apache server management, UFW for firewall configurations, Fail2ban for security against brute-force attacks, and Vim as a versatile text editor.
+
+
+Task 2: User Setup
+Objective: Establish user accounts with predefined configurations to manage access control efficiently.
+User Creation: Create specific user accounts like `johndoe` and `janedoe`, setting them up with initial passwords and necessary user details, ensuring they have the correct permissions for their roles.
+
+
+Task 3: Security Hardening and Logging
+Objective: Enhance the security measures to safeguard the server.
+There is firewall Configured in your background. You need to do these tasks to ensure security measures:
+Disable Unused Services: Disable services that are not in use, such as Apache2 if it's redundant, to reduce potential security vulnerabilities.
+Secure SSH Access: Adjust SSH configurations to improve security measures, including disabling root login to prevent direct remote access to the server’s root account.
+
+Ans:
+
+#!/bin/bash
+
+
+# Update and Install Software Packages
+echo "Updating and Installing software packages..."
+sudo apt-get update && sudo apt-get upgrade -y || error_exit "Failed to update and upgrade system."
+sudo apt-get install -y nginx apache2 fail2ban vim ufw || error_exit "Failed to install required packages."
+
+# Adding Users
+echo "Adding users..."
+sudo adduser johndoe --gecos "John Doe, RoomNumber, WorkPhone, HomePhone" --disabled-password
+echo "johndoe:password" | sudo chpasswd
+sudo adduser janedoe --gecos "Jane Doe, RoomNumber, WorkPhone, HomePhone" --disabled-password
+echo "janedoe:password" | sudo chpasswd || error_exit "Failed to add users."
+
+# Disable Unused Services
+echo "Disabling unused services..."
+sudo systemctl disable --now apache2 || error_exit "Failed to disable Apache2."
+
+# Disable root SSH login
+# File path to the SSHD config
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+# Disable root login in SSHD config
+if grep -q "^PermitRootLogin" $SSHD_CONFIG; then
+   # Modify the existing PermitRootLogin setting
+   sudo sed -i 's/^PermitRootLogin.*/PermitRootLogin no/' $SSHD_CONFIG
+elif grep -q "^#PermitRootLogin" $SSHD_CONFIG; then
+   # Uncomment and modify the PermitRootLogin setting if it is commented out
+   sudo sed -i 's/^#PermitRootLogin.*/PermitRootLogin no/' $SSHD_CONFIG
+else
+   # Add PermitRootLogin setting if it doesn't exist
+   echo "PermitRootLogin no" | sudo tee -a $SSHD_CONFIG
+fi
+
+# Restart the SSH service to apply changes
+sudo systemctl restart ssh || error_exit "Failed to restart SSH service."
+
+echo "Server setup completed successfully."
+
+
+
+
+DevOps Class - 9 Assignment - 2
+
+Test 1: HTML Report Generation
+Objective: Verify that the system health report in HTML format is successfully generated and stored at the specified location.
+Method: The test checks if the file `/var/log/system_health_report.html` exists.
+
+
+Test 2: Content Verification of HTML Report
+Objective: Ensure that the HTML report includes all necessary sections covering different aspects of the system's health.
+Method: The test verifies the presence of specific sections in the HTML report by searching for titles like "System Health Report", "Uptime", "CPU and Memory Usage", "Disk Usage", and "Recently Installed Security Patches".
+
+
+
+Test 3: Email Delivery Check
+Objective: Confirm that the system health report is emailed to the intended recipient, `janedoe`.
+Method: The test reads the mailbox file for `janedoe` and checks for the presence of keywords associated with the system health report to ascertain if the email was sent and contains relevant content.
+
+Ans:
+
+
+#!/bin/bash
+Define variables for logging
+
+LOGFILE=”/var/log/system_report.log”
+exec > >(sudo tee -a $LOGFILE) 2>&1
+
+
+Function to handle errors
+
+error_exit()
+{
+echo “$1” 1>&2
+exit 1
+}
+Function to send email with the report
+
+send_email()
+{
+local subject=”Weekly System Health Report”
+local body_file=”$1”
+local recipient_user=”janedoe”
+echo “Sending the system report via email to $recipient_user…”
+mail -s “subject”−a“Content−type:text/html;”recipient_user@localhost < $body_file
+}
+HTML file for the report
+
+HTML_REPORT=”/var/log/system_health_report.html”
+Generate the HTML report
+
+{
+echo “<html><head></head><body>”
+echo “<h1>System Health Report - $(date +’%Y-%m-%d’)</h1>”
+echo “<h2>Uptime:</h2>”
+echo “<p>$(uptime)</p>”
+echo “<h2>CPU and Memory Usage:</h2>”
+echo “<pre>$(top -bn1 | head -5)</pre>”
+echo “<h2>Disk Usage:</h2>”
+echo “<pre>$(df -h)</pre>”
+echo “<h2>Recently Installed Security Patches:</h2>”
+echo “<pre>$(grep -i security /var/log/apt/history.log | tail -10)</pre>”
+echo “</body></html>”
+} > $HTML_REPORT || error_exit “Failed to generate HTML report.”
+Send the report via email
+
+send_email $HTML_REPORT || error_exit “Failed to send email.”
+echo “System health report generated and sent successfully.”
