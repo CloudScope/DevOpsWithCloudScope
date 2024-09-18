@@ -1,0 +1,27 @@
+Objective:
+
+Gain hands-on experience in identifying and configuring different layers of the TCP/IP model by managing network interfaces and protocols on a Linux system.
+Tasks and Steps:
+
+Task 1: Identify Network Interfaces and Addressing
+
+Objective: Understand the configuration of network interfaces on your Linux system to explore the relationship between the physical layer (hardware) and the internet layer (IP addressing). Examine the active network interfaces and their assigned IP addresses. This helps you understand how devices are interconnected and communicate within a network.
+Task:
+Write a command that displays all network interfaces along with their IPv4 and IPv6 addresses.
+Append this command to /home/user/answer.txt using the following format:
+
+echo "your_command_here" >> /home/user/answer.txt
+Task 2: Transport Layer Exploration
+
+Objective: Analyze the transport layer by identifying the active TCP and UDP ports, which facilitates an understanding of different types of network communications.
+Description: Differentiating between TCP and UDP ports will help you understand their distinct roles—TCP for reliable connections and UDP for faster, connectionless communications.
+Task:
+Write a command to list all active listening ports for TCP and UDP protocols.
+Append this command to /home/user/answer.txt using the following format:
+
+echo "your_command_here" >> /home/user/answer.txt
+
+Ans:
+
+echo “ip -o addr show” » /home/user/answer.txt
+echo “sudo ss -tuln” » /home/user/answer.txt
