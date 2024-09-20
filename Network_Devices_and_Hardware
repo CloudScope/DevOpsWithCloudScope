@@ -1,0 +1,42 @@
+Problem Description: Configuring iptables for Web Server Security
+Objective: Secure a web server by implementing precise iptables rules that manage web traffic and ICMP requests, ensuring controlled accessibility and robust security.
+
+NOTE: Password for sudo is user@123!
+
+TASK-1
+
+Verify and Install iptables:
+
+Install iptables in your Linux based environment to manage firewall settings.
+
+TASK-2
+
+Set Default Policies for Network Traffic:
+
+Establish secure default policies by setting the INPUT and FORWARD chains to DROP all traffic and the OUTPUT chain to ACCEPT.
+
+NOTE: Use this command before attempting this task otherwise your lab connection will close.
+
+sudo iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 
+TASK-3
+
+Configure Rules for Essential Web Traffic:
+Enable HTTP and HTTPS by allowing traffic on ports 80 and 443, ensuring the web server remains accessible to users.
+
+TASK-4
+
+Manage ICMP Traffic:
+
+Add a rule to block all incoming ICMP requests to protect against network scanning.
+
+
+Ans:
+
+sudo apt-get update
+sudo apt-get install iptables
+sudo iptables -P INPUT DROP
+sudo iptables -P FORWARD DROP
+sudo iptables -P OUTPUT ACCEPT
+sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+sudo iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
