@@ -40,3 +40,20 @@ sudo iptables -P OUTPUT ACCEPT
 sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
 sudo iptables -A INPUT -p tcp --dport 443 -j ACCEPT
 sudo iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
+
+
+Q12. CN Class-3-Assignment 2
+
+TASK-1: Remove the ICMP Block Rule
+
+Description:
+Remove a rule blocking ICMP requests to allow network ping tests.
+TASK-2: Block Traffic from a Specific IP Address
+
+Description:
+Add a rule to prevent all access from an ip 192.0.2.0 to 192.0.2.255 (i.e.,192.0.2.0/24)
+
+Ans:
+
+sudo iptables -D INPUT -p icmp --icmp-type echo-request -j DROP
+sudo iptables -A INPUT -s 192.0.2.0/24 -j DROP
