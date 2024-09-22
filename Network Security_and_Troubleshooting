@@ -1,0 +1,25 @@
+Q11. CN Class-5 Assignment 1
+
+UFW Firewall Configuration Tasks
+Task 1: Turn On UFW
+Description: Activate the firewall to start protecting the server.
+
+Task 2: Allow SSH (Port 22)
+Description: Open port 22 for SSH to enable remote server management.
+
+Task 3: Allow HTTP Traffic (Port 80)
+Description: Open port 80 to let web browsers access the server.
+
+Task 4: Allow DNS Requests (Port 53, TCP)
+Description: Open port 53 through TCP protocol to support handling large DNS queries.
+
+Task 5: Block HTTPS Traffic (Port 443)
+Description:
+You need to stop all secure web traffic by blocking port 443 through TCP Protocol.
+
+Ans:
+sudo ufw enable
+sudo ufw allow 22/tcp
+sudo ufw allow 80/tcp
+sudo ufw allow 53/tcp
+sudo ufw deny 443/tcp
