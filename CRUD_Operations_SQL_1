@@ -15,12 +15,142 @@ Table: customer
 
 Sample Input:
 Test Case 1
-https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/041/173/original/111.PNG?1690866623
+
 
 Sample Output:
 Output
 
-https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/041/174/original/112.PNG?1690866850
+
 
 Ans:
 SELECT name FROM customer WHERE referee_id != 102;
+
+Q2. Find Customers With Positive Revenue this Year
+
+Write an SQL query to report the unique customers with postive revenue in the year 2021.
+
+Ans:
+
+SELECT DISTINCT customer_id FROM customers WHERE revenue > 0 AND year = 2021; 
+
+Q3. New Salary
+
+ontext:
+Zenith Tech Solutions is a growing software development company. The company is reviewing employee compensation and considering salary increases as a way to reward employee performance and stay competitive in the job market, Zenith Tech is considering a salary increase for all staff. To calculate the potential impact of a salary increase, Zenith Tech wants to analyze the effects of a 20% raise for all employees. By analyzing the "New_salary" column, Zenith Tech can assess the overall financial implications of a company-wide raise and make an informed decision about salary adjustments. This can help them retain valuable talent and attract top performers in the competitive tech industry.
+Problem Description:
+Write a SQL query to create a new column named "New_salary" within their "employees" table. This column will reflect the adjusted salary after applying a 20% raise to the current salary ("salary").
+
+Steps to calculate the salary increment:
+1) Multiply the current salary by the percentage of the increment.
+2) Divide the result by 100.
+3) Then add the result to the current salary.
+4) Name the column as 'New_Salary'
+5) Round off the 'New_salary'. Use Round() for this.
+
+Result:
+Return the columns emp_id, name, salary, and 'New_salary'.
+Order the output by the emp_id in ascending order.
+
+Table: employees
+-----------------------
+| Field	 | Type	       |
+---------------------- |
+| emp_id | int	       |
+---------------------- |
+| name	 | varchar(255)|
+---------------------- |
+| salary | int         |
+-----------------------
+
+Sample Input:
+Table: employees
+
+
+
+Sample Output:
+
+Ans:
+
+ALTER TABLE employees ADD COLUMN New_salary INT;
+UPDATE employees SET New_salary = ROUND(salary + (salary * 20 / 100));
+SELECT * FROM employees;
+
+
+
+Q4. Invalid Tweets
+
+Write an SQL query to find the IDs of the invalid tweets. The tweet is invalid if the number of characters used in the content of the tweet is strictly greater than 15.
+Return the resultant table ordered by tweet_id in ascending order.
+
+Note: Use the length(column_name) function to find the length of the string.
+
+Ans:
+
+SELECT tweet_id FROM tweets WHERE LENGTH(content) > 15 ORDER BY tweet_id ASC;
+
+Q5. Not Boring Movies
+
+Table: Cinema
+
+Column Name	 Type
+id	         int
+movie	       varchar
+description	 varchar
+rating	     int
+
+id is the primary key for this table.
+Each row contains information about the name of a movie, its genre, and its rating.
+rating is a 2 decimal places float in the range [0, 10]
+Write an SQL query to report the movies with an odd-numbered ID and a description that is not "boring".
+Return the result table ordered by rating in descending order and id in ascending order.
+
+Note: Use the mod(column_name,number) function to find out an odd-numbered or even-numbered ID.
+
+Example:
+Table: Cinema
+
+id	movie	     description	 rating
+1	  War	        great 3D	    8.9
+2	  Science	    fiction	      8.5
+3	  irish	      boring	      6.2
+4	  Ice song	  Fantacy	      8.6
+5	  House card	Interesting	  9.1
+
+Output:
+id	movie	      description	rating
+5	  House Card	Interesting	 9.1
+1	  War	        great 3D	   8.9
+
+
+Ans:
+
+SELECT * FROM Cinema WHERE MOD(id, 2) = 1 AND description <> 'boring' ORDER BY rating DESC, id ASC;
+
+
+Q6. Big Countries
+
+A country is big if:
+ - it has an area greater than 300000 km2, AND
+ - it has a population greater than 20000000.
+
+Write an SQL query to report the name, population, and area of the big countries.
+
+Return the resultant table ordered by population in ascending order.
+Table: world
+Column Name  Type
+name         varchar
+continent    varchar
+area         int
+population   int
+gdp          int
+
+Sample Input:
+Table: world
+input
+
+Sample Output:
+output
+
+Explanation: Both Maseru and Vitória have area greater than 300000 and population greater than 20000000.
+
+SELECT name,population,area FROM world WHERE area>300000 AND population>20000000 order by population asc;
