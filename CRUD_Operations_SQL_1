@@ -154,3 +154,51 @@ output
 Explanation: Both Maseru and Vitória have area greater than 300000 and population greater than 20000000.
 
 SELECT name,population,area FROM world WHERE area>300000 AND population>20000000 order by population asc;
+
+Q7. Total Amount
+Problem Description:
+Write a query to calculate the sub_total for each order, return the details of the orderNumber, productCode, and sub_total.
+Note : Please ensure to read the sample out explanation.
+
+Note:
+Round off the sub_total up to two decimal places.
+Order the output by the orderNumber in ascending order and then by sub_total in descending order.
+
+Ans:
+SELECT orderNumber, productCode, ROUND((quantityOrdered * priceEach),2) AS sub_total FROM orderdetails ORDER BY orderNumber, sub_total DESC;
+
+
+Q8. Employee 101
+Context:
+Unified Solutions Inc. is a technology consulting firm specialising in workforce management solutions, dedicated to providing tailored staffing solutions to optimise business operations. The company prides itself on deploying highly skilled professionals to meet the staffing needs of various industries. To maintain accurate records of employee career progression and ensure effective human resources management, Unified Solutions Inc. utilizes a comprehensive job history database.
+You are a database administrator at Unified Solutions Inc. As part of your responsibility to manage employee records, you need to retrieve details from the job history for all employees except for the employee with ID 101. This data is crucial for tracking career trajectories, facilitating performance evaluations, and supporting strategic workforce planning initiatives.
+Problem Statement:
+Write a query to get all the details of all the employees from job_history except for the employee with ID 101.
+Result:
+Return all the fields.
+Return the result ordered by employee_id and job_id in ascending order.
+
+Ans:
+SELECT * FROM job_history where employee_id != 101 ORDER BY employee_id ASC, job_id ASC;
+
+
+
+Q9. Filter Products in Electronics Category
+Consider a database schema for products with the following table:
+Products: product_id (Integer, Primary Key),product_name (Text),category (Text),price (Integer)
+Write an SQL query to retrieve products that belong to the "Electronics" category and have a price greater than 500 or products that belong to the "Apparel" category and have a price less than 50.
+
+Return the output ordered by product_id in ascending order.
+
+Ans:
+SELECT * FROM Products WHERE ( category = "Electronics" AND price > 500 ) OR ( category = "Apparel" AND price < 50 );
+
+
+Q10. Retrieve Customers with Specific Name
+Consider a database schema for customers with the following table:
+Customers: customer_id (Integer, Primary Key) ,first_name (Text), last_name (Text), email (Text)
+Write an SQL query to search for customers whose first name is "John" or last name is "Smith," and full name is not ‘John Smith’.
+Return the output ordered by customer_id in ascending order.
+
+Ans:
+SELECT * FROM Customers WHERE (first_name = 'John' OR last_name = 'Smith') AND CONCAT(first_name, ' ', last_name) != 'John Smith' ORDER BY customer_id ASC;
