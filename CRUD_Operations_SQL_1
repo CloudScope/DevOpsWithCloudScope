@@ -1,0 +1,26 @@
+Q1. Find Customer Referee
+
+Write an SQL query to fetch the names of the customer that are not referred by the customer with id = 102.
+
+Table: customer
+------------------------
+| Column Name | Type    |
+------------------------
+| id          | int     |
+------------------------
+| name        | varchar |
+------------------------
+| referee_id  | int     |
+------------------------
+
+Sample Input:
+Test Case 1
+https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/041/173/original/111.PNG?1690866623
+
+Sample Output:
+Output
+
+https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/041/174/original/112.PNG?1690866850
+
+Ans:
+SELECT name FROM customer WHERE referee_id != 102;
