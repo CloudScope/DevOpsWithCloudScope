@@ -1,0 +1,154 @@
+
+Assignment 1: Managing Roles and Users in MySQL
+Objective:
+Create a role with specific privileges and assign a user to this role in the scaler database.
+
+Instructions:
+Task 1: Create a Role with Specific Privileges
+
+Create a role named read_order that has read-only access to the orders table in the scaler database.
+Ensure that the role has the necessary privileges to perform SELECT operations on the orders table.
+Task 2: Create a User and Assign the Role
+
+Create a new user named Ram.
+Assign the read_order role to the user Ram so that they can read data from the orders table in the scaler database.
+Verify that the user Ram has the correct privileges by testing their access to the orders table.
+
+Ans:
+create role "read_order";
+GRANT SELECT ON scaler.orders TO 'read_order';
+
+CREATE USER 'Ram'@'localhost' IDENTIFIED BY 'Ram@123!';
+GRANT 'read_order' TO 'Ram'@'localhost';
+FLUSH PRIVILEGES;
+
+
+
+Q2. DBMS Class 8 Assignment 2
+
+Automating User Role Management with Shell Scripting
+Objective:
+Create a shell script to manage user roles in MySQL by checking and revoking roles assigned to users.
+
+Instructions:
+Task: Create a Shell Script for Role Management
+Write a shell script file named role_management_script.sh
+User Verification and Creation: Checks if the user "Alice" exists in the database. If not, it creates this user with a predefined password.
+Role Verification and Creation: Checks if the role "data_entry" exists. If not, the script creates this role.
+Role Assignment: Assigns the "data_entry" role to "Alice" and refreshes database privileges to ensure the changes take effect immediately.
+You need to use some predefined values inside you script:
+
+Username:
+"Alice"
+Role Name:
+"data_entry"
+MySQL Credentials:
+Username (MYSQL_USER):
+"root"
+Password (MYSQL_PASSWORD):
+"user@123!"
+Host (MYSQL_HOST):
+"localhost"
+
+
+
+Ans:
+
+# Hardcoded username and role for the database
+USERNAME="Alice"
+ROLE_NAME="data_entry"
+
+# MySQL hardcoded credentials
+MYSQL_USER="root"
+MYSQL_PASSWORD="user@123!"  # Replace with your actual MySQL password for security
+MYSQL_HOST="localhost"
+
+# Function to execute MySQL commands
+execute_mysql() {
+    local query=$1
+    echo "Executing: $query"
+    mysql -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -h "$MYSQL_HOST" -e "$query" 2&gt;&amp;1
+}
+
+# Functions to manage user and role creation
+create_user() {
+    echo "Checking if user $USERNAME exists..."
+    local user_exists=$(execute_mysql "SELECT EXISTS(SELECT 1 FROM mysql.user WHERE user = '$USERNAME' AND host = 'localhost');")
+    if [[ "$user_exists" == *0* ]]; then
+        echo "User $USERNAME does not exist, creating user..."
+        execute_mysql "CREATE USER '$USERNAME'@'localhost' IDENTIFIED BY 'SecurePassword123';"
+    else
+        echo "User $USERNAME already exists."
+    fi
+}
+
+create_role() {
+    echo "Checking if role $ROLE_NAME exists..."
+    local role_exists=$(execute_mysql "SELECT EXISTS(SELECT 1 FROM information_schema.applicable_roles WHERE role_name = '$ROLE_NAME');")
+    if [[ "$role_exists" == *0* ]]; then
+        echo "Role $ROLE_NAME does not exist, creating role..."
+        execute_mysql "CREATE ROLE '$ROLE_NAME';"
+    else
+        echo "Role $ROLE_NAME already exists."
+    fi
+}
+
+grant_role() {
+    echo "Granting role $ROLE_NAME to user $USERNAME..."
+    execute_mysql "GRANT '$ROLE_NAME' TO '$USERNAME'@'localhost';"
+    execute_mysql "FLUSH PRIVILEGES;"
+}
+
+# Execute the main functions
+create_user
+create_role
+grant_role
+
+
+Q3. DBMS Class 8 Assignment-3
+
+Assignment : Automating MySQL Database Backups
+Objective:
+Create a shell script to automate the backup of the MySQL database "test" and store it in a secure location with a timestamped filename.
+
+Instructions:
+Task: Create a Shell Script for Automated Backups
+
+Write a shell script that:
+Connects to the MySQL server and performs a backup of the specified database "test".
+Saves the backup file in the secure directory /home/user/secure/backup.
+Appends the current date (in ddmmyyyy format) to the backup filename to help identify the backup date.
+The backup file should be named using the format ${DB_NAME}_ddmmyyyy.sql, where DB_NAME is "test".
+
+Ans:
+
+#!/bin/bash
+
+# Variables
+DB_NAME="test"  # Set your database name here
+BACKUP_DIR="/home/user/secure/backup"
+DATE=$(date +%d%m%Y)  # Get current date in ddmmyyyy format
+BACKUP_FILE="$DB_NAME"_"$DATE".sql
+MYSQL_USER="root"  # Replace with your MySQL user
+MYSQL_PASSWORD="user@123!"  # Replace with your MySQL password
+
+# Check if backup directory exists, if not, create it
+if [ ! -d "$BACKUP_DIR" ]; then
+    mkdir -p "$BACKUP_DIR"
+fi
+
+# Function to perform MySQL backup
+backup_database() {
+    echo "Starting backup of database $DB_NAME..."
+    mysqldump -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$DB_NAME" > "$BACKUP_DIR/$BACKUP_FILE"
+    if [ $? -eq 0 ]; then
+        echo "Backup was successful."
+        chmod 600 "$BACKUP_DIR/$BACKUP_FILE"  # Secure the backup file
+    else
+        echo "Error during backup!"
+        exit 1
+    fi
+}
+
+# Call the backup function
+backup_database
