@@ -31,3 +31,41 @@ Effective Use of Indexes
 Create a B-tree Index
 Enhance query performance on the test database in the users table by creating a B-tree index on the last_name column. This type of index is ideal for speeding up searches involving equality and range conditions on this commonly queried column.
 
+Ans:
+CREATE INDEX idx_last_name ON users (last_name);
+
+explain:
+To enhance query performance in the `users` table by creating a B-tree index on the `last_name` column, you can use the following SQL statement. A B-tree index is the default index type in MySQL and is highly effective for speeding up searches that involve equality (`=`) and range conditions (`<`, `>`, `BETWEEN`, etc.).
+
+### SQL Statement to Create the Index
+
+```sql
+CREATE INDEX idx_last_name ON users (last_name);
+```
+
+### Explanation
+- **`CREATE INDEX`**: This command creates an index on a specified column.
+- **`idx_last_name`**: The index name; this can be any unique name that makes it easy to identify the index.
+- **`ON users (last_name)`**: Specifies the table (`users`) and the column (`last_name`) on which the index is created.
+
+### Benefits of a B-tree Index on `last_name`
+- **Faster Searches**: B-tree indexes improve the performance of `SELECT` queries by allowing the database to locate rows with specific `last_name` values quickly.
+- **Efficient Range Queries**: For queries that filter on a range of `last_name` values (e.g., `WHERE last_name BETWEEN 'A' AND 'M'`), a B-tree index significantly speeds up retrieval.
+- **Reduced Full Table Scans**: Instead of scanning all rows, MySQL can use the index to jump directly to relevant rows, especially in larger tables.
+
+### Example Usage
+With the index in place, queries such as the following will benefit:
+
+```sql
+SELECT * FROM users WHERE last_name = 'Smith';
+SELECT * FROM users WHERE last_name BETWEEN 'A' AND 'M';
+```
+
+### Verifying the Index
+To confirm the index was created successfully, you can check with:
+
+```sql
+SHOW INDEX FROM users;
+```
+
+This command will list all indexes on the `users` table, including `idx_last_name`.
