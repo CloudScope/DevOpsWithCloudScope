@@ -204,3 +204,75 @@ SELECT DISTINCT viewer_id AS id
 FROM views
 WHERE viewer_id = author_id
 ORDER BY id;
+
+Q5. Patients With a Condition
+
+Write an SQL query to report the patient_id who have Type I Diabetes.
+
+Patients with Type I Diabetes will have "DIAB1" as prefix in any of the words in the conditions data.
+
+For example :
+
+- Patient with conditions such as "DIAB100 ACNE FEVER" , "ACNE DIAB100 FEVER" are Type 1 Diabetic
+- Patient with conditions such as "ACNEDIAB100 FEVER" , "ACNE FEVER" are not Type 1 Diabetic
+Return the results ordered by patient_id in ascending order.
+
+
+Ans:
+select patient_id
+from patients
+where conditions like "% diab1%" or conditions like 'diab1%'
+order by patient_id;
+
+Q6. Olympic Table
+
+Context:
+
+The Olympic Games are a major international multi-sport event where athletes from various countries compete for medals in different sports. The performance of each country is often evaluated based on the total number of medals won.
+
+Problem Statement:
+
+In the context of managing data for an Olympic event, you are tasked with sorting a table of countries based on their medal counts. The goal is to determine the ranking of countries by their performance in the Olympics, prioritizing gold, silver, and bronze medals, respectively.
+
+Write an SQL query that sorts the olympic table according to the following rules:
+
+The country with more gold medals should come first.
+If there is a tie in the no. of gold medals, the country with more silver medals should come first.
+If there is a tie in the no. of silver medals, the country with more bronze medals should come first.
+If there is a tie in the no. of bronze medals as well, then the countries with the tie are sorted in ascending order lexicographically.
+
+Ans:
+SELECT country, gold_medals, silver_medals, bronze_medals
+FROM olympic
+ORDER BY 
+gold_medals DESC,
+silver_medals DESC,
+bronze_medals DESC,
+country ASC;
+
+Q7. Low Fat & Recyclable Products
+Problem Statement:
+
+Write a query to find the ids of products that are both low-fat and recyclable.
+
+Return the result table ordered by product_id in ascending order.
+
+Ans:
+SELECT product_id
+FROM products
+WHERE (low_fats= 'Y' AND recyclable= 'Y')
+order by product_id;
+
+Q8. Germany
+Problem Statement:
+
+Write a query to fetch customer details like customerName, phone, addressLine1, city, state, and postalCode who are not from Germany.
+
+Return the result ordered by customerName in ascending order.
+
+Ans:
+select customerName, phone, addressline1, city, state, postalcode
+from customers
+where country <> 'Germany'
+order by customerName;
+
