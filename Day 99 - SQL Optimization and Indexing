@@ -1,0 +1,33 @@
+Q1. DBMS Class 5 Assignment 1
+
+Query Optimization Basics
+NOTE: You need to use test database and orders table. Before attempting the questions make sure to login into mysql server using the below command:
+
+mysql -u user -puser@123!
+Objective:
+Learn the basics of query optimization by identifying inefficient queries and improving their performance in MySQL.
+
+Instructions:
+Task 1: Analyze a Slow Query
+
+You are provided with a query that retrieves all orders placed by customers in the last month from the orders table.
+
+Execute the given query in the terminal and analyze its performance.
+
+-- Provided query
+SELECT * FROM orders WHERE order_date >= CURRENT_DATE - INTERVAL 1 MONTH;
+Write a query to ana Task 2: Optimize the Query
+
+Create an index named idx_assignment_2_task_2 on order_date to improve the performance of the query.
+
+Ans:
+
+EXPLAIN SELECT * FROM orders WHERE order_date >= CURRENT_DATE - INTERVAL 1 MONTH;
+CREATE INDEX idx_assignment_2_task_2 ON orders(order_date);
+
+Q2. DBMS Class 5 Assignment 2
+
+Effective Use of Indexes
+Create a B-tree Index
+Enhance query performance on the test database in the users table by creating a B-tree index on the last_name column. This type of index is ideal for speeding up searches involving equality and range conditions on this commonly queried column.
+
