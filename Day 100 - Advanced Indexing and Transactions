@@ -1,0 +1,20 @@
+Q1. DBMS Class 6 Assignment 1
+
+NOTE: You need to use test database for all the given questions. Before attempting the questions make sure to login into mysql server using the below command:
+
+mysql -u user -puser@123!
+Task 1: Covering Index
+Optimize the performance of a query retrieving product id and product name for a specific category in the products table. Create a covering index named idx_product_id_name on the product_id and product_name columns.
+
+Task 2: Query Performance
+Analyze the query given below:
+
+SELECT product_name, price FROM products WHERE category = 'Electronics';
+Task 3: Design a Composite Index
+Improve the efficiency of a query filtering orders by order_id and order_date. Create a composite index named idx_order_id_order_date on the order_id and order_date columns in the orders table
+
+Ans:
+
+CREATE INDEX idx_product_id_name ON products (product_id, product_name);
+EXPLAIN ANALYZE SELECT product_name, price FROM products WHERE category = 'Electronics';
+CREATE INDEX idx_order_id_order_date ON orders (order_id, order_date);
