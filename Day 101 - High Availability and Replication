@@ -1,0 +1,232 @@
+Q1. DBMS Class 7 Assignment 1
+
+In this assignment, you are going to set up database replication between a master-server and a replica-server. Replication is the process of copying and maintaining database updates from one database (the master) to another (the replica). Once replication is set up, any changes made to the master will automatically be copied to the replica.You are logged in to the master-server, where a MySQL server is already running. There is also another server provided to you, known as the replica-server, where you will set up the replication process. Your job is to configure replication so that the replica-server can mirror the master-server database.Step-by-Step Breakdown of Tasks:
+
+NOTE: If you are facing any permission issues using any of the below user or replica, make sure to use root user using below command and password for sudo is user@123!
+sudo mysql -u root
+
+Task 1: SSH to the Replica Server and Set Up the Master Server's IP Address
+
+SSH to the replica server:
+
+You will need to connect to the replica-server to perform replication tasks. You can do this by using the following command:
+
+bash ssh replica@replica_server
+When prompted, use the following password:
+
+user@123!
+Check if the replica server can communicate with the master server:
+
+After logging into the replica-server, you will check if it can "ping" (reach) the master-server. Run this command on the replica server:
+
+ping master-db
+If the replica server can ping master-db, it means the two servers can communicate, and you can move on to the next task.
+
+What to do if the replica server cannot ping the master server:
+
+If you get an error saying that master-db cannot be reached, you will need to tell the replica-server where to find the master-server by adding its IP address to the /etc/hosts file.
+Finding the master server's IP address:
+
+Go back to the master-server by logging out of the replica-server (type exit in the terminal). Then, run the following command on the master-server to find its IP address:
+
+hostname -I
+Copy the IP address shown in the output.
+
+Adding the master server's IP address to the replica server's hosts file:
+
+SSH back to the replica-server:
+
+ssh replica@replica_server
+Once logged in, open the /etc/hosts file to edit it. This file is used to manually map IP addresses to hostnames on your system.
+
+Run the following command to add the master-server's IP to the file:
+
+sudo echo " master-db" >> /etc/hosts
+Replace with the actual IP address you copied from the master-server. This will allow the replica server to find the master server using the name master-db.
+
+Verify connection:
+
+After editing the /etc/hosts file, try to ping the master-server again: ping master-db
+
+If the ping is successful, the replica server can now communicate with the master server, and you are ready to move on to the next task.
+
+
+
+Task 2: Create a Replication User
+Now that the replica server can communicate with the master server, you need to create a special replication user on the master-server. This user will allow the replica-server to connect to the master-server and replicate its data.
+
+Log back in to the master server:
+
+If you are not already on the master-server, SSH back to it:
+Log in to the MySQL server:
+
+Log in to the MySQL database on the master server:
+
+mysql -u user -p
+Enter the user password (user@123!) when prompted.
+
+Create a replication user:
+
+Once logged in to MySQL, create a user named replica_user specifically for replication
+
+Grant replication privileges to the user:
+
+Grant the necessary permissions to the replication user so that it can replicate data from the master server. If you are not able to grant permission from user, make sure to use root user using below command:
+
+sudo mysql -u root
+
+Flush privileges
+
+Refresh MySQL’s privileges so that the changes take effect
+
+Note the master log file and position:
+
+Check for the current binary log file and position from the master-db. This information is needed to set up replication on the replica server.
+
+Make a note of the values for the File and Position fields, as you will need them in the next task.
+
+Task 3: Set Up Replication on the Replica Server
+
+Finally, you will configure the replica-server to replicate the data from the master-server.
+
+Log back into the replica server: SSH into the replica-server again if you’re not already logged in: ssh replica@replica_server
+
+Log in to MySQL on the replica server:
+
+Access the MySQL server on the replica-server: mysql -u replica -p
+
+Enter the MySQL replica user password. (user@123!)
+
+Configure the replica server for replication:
+
+Start the replication process:
+
+Start replication on the replica-server:
+
+Verify replication status:
+
+Check if replication is set up correctly by running:
+
+Look for the line SlaveIORunning: Yes and SlaveSQLRunning: Yes. If both are Yes, replication has been successfully set up.
+
+
+Ans:
+Step 1: Set Up Network Connectivity
+SSH to the Replica Server
+ssh replica@replica_server
+Use the password: user@123!.
+Check Communication with the Master Server
+Run a ping command to check if the replica server can communicate with the master:
+
+ping master-db
+If ping fails, the replica server likely cannot resolve master-db. Continue with the next steps.
+Get the Master Server’s IP Address
+SSH to the master server and get its IP address:
+hostname -I
+Note the IP address from the output.
+Add Master IP to /etc/hosts on the Replica
+SSH back to the replica server:
+ssh replica@replica_server
+Edit the /etc/hosts file to map master-db to the master’s IP:
+sudo nano /etc/hosts
+Add this line, replacing <master_ip> with the actual IP:
+<master_ip> master-db
+Save and exit.
+Verify Connection
+Run ping again to check if the replica can now communicate with the master:
+
+ping master-db
+
+Step 2: Create a Replication User on the Master Server
+Log in to MySQL on the Master Server
+SSH to the master server:
+ssh user@master_server
+Access MySQL as root:
+mysql -u root -p
+Enter the password user@123!.
+Create the Replication User
+Run the following commands to create a user for replication and grant the necessary permissions:
+
+CREATE USER 'replica_user'@'%' IDENTIFIED WITH 'mysql_native_password' BY 'user@123!';
+GRANT REPLICATION SLAVE ON *.* TO 'replica_user'@'%';
+FLUSH PRIVILEGES;
+Get the Master Log File and Position
+Run SHOW MASTER STATUS to get the binary log file and position:
+SHOW MASTER STATUS;
+Note the File and Position values as they are required to configure replication on the replica server.
+
+Step 3: Configure MySQL Settings on Master and Replica Servers
+On the Master Server
+Edit MySQL Configuration
+Open the MySQL configuration file:
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+Set Configuration Values
+Add or modify the following lines:
+[mysqld]
+bind-address = 0.0.0.0
+server-id = 1
+log_bin = /var/log/mysql/mysql-bin.log
+Setting server-id = 1 uniquely identifies the master server.
+Restart MySQL
+Restart MySQL to apply the changes:
+sudo service mysql restart
+On the Replica Server
+Edit MySQL Configuration
+Open the MySQL configuration file:
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+Set Configuration Values
+Add or modify these lines:
+[mysqld]
+bind-address = 0.0.0.0
+server-id = 2
+Use a unique server-id value for the replica server, here set as 2.
+Restart MySQL
+Restart MySQL to apply the new configuration:
+sudo service mysql restart
+
+Step 4: Configure and Start Replication on the Replica Server
+SSH to the Replica Server
+ssh replica@replica_server
+Log in to MySQL
+Access MySQL as root on the replica server:
+mysql -u root -p
+Enter the password user@123!.
+Configure Replication
+Run the CHANGE MASTER TO command, replacing <master_ip>, replica_user, replica_password, File, and Position with the respective values from the master:
+
+CHANGE MASTER TO
+  MASTER_HOST='master-db',
+  MASTER_USER='replica_user',
+  MASTER_PASSWORD='user@123!',
+  MASTER_LOG_FILE='mysql-bin.000001',
+  MASTER_LOG_POS=157;
+Start Replication
+Start the replication process on the replica:
+
+START SLAVE;
+Verify Replication Status
+Run this command to check if replication is active:
+
+SHOW SLAVE STATUS\G;
+Ensure Slave_IO_Running and Slave_SQL_Running are both set to Yes, indicating successful replication.
+
+
+
+Q2. DBMS Class 7 Assignment 2
+
+Assignment 2: Performing Failover in a Source-Replica Replication Setup
+Objective:
+Perform a failover from the source to the replica server in a MySQL source-replica replication setup.
+
+Instructions:
+Task 1: Simulate Source Server Failure
+
+Simulate a failure on the source server to test the failover process.
+Ensure that the source server is no longer accessible or able to serve database requests.
+Task 2: Promote the Replica Server
+
+Promote the replica server to become the new source server.
+Ensure that the replica server is now accepting read/write operations as the primary server.
+
+Ans:
+
