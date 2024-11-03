@@ -84,51 +84,42 @@ Ans:
 
 
 #!/bin/bash
-Define variables for logging
 
-LOGFILE=”/var/log/system_report.log”
-exec > >(sudo tee -a $LOGFILE) 2>&1
-
-
-Function to handle errors
+LOGFILE="/var/log/system_report.log"
 
 error_exit()
 {
-echo “$1” 1>&2
+echo "$1" 1>&2
 exit 1
 }
-Function to send email with the report
 
 send_email()
 {
-local subject=”Weekly System Health Report”
-local body_file=”$1”
-local recipient_user=”janedoe”
-echo “Sending the system report via email to $recipient_user…”
-mail -s “subject”−a“Content−type:text/html;”recipient_user@localhost < $body_file
+local subject="Weekly System Health Report"
+local body_file="$1"
+local recipient_user="janedoe"
+echo "Sending the system report via email to $recipient_user…"
+mail -s "subject"−a"Content−type:text/html;" $recipient_user@localhost < $body_file
 }
-HTML file for the report
 
-HTML_REPORT=”/var/log/system_health_report.html”
-Generate the HTML report
+HTML_REPORT="/var/log/system_health_report.html"
 
 {
-echo “<html><head></head><body>”
-echo “<h1>System Health Report - $(date +’%Y-%m-%d’)</h1>”
-echo “<h2>Uptime:</h2>”
-echo “<p>$(uptime)</p>”
-echo “<h2>CPU and Memory Usage:</h2>”
-echo “<pre>$(top -bn1 | head -5)</pre>”
-echo “<h2>Disk Usage:</h2>”
-echo “<pre>$(df -h)</pre>”
-echo “<h2>Recently Installed Security Patches:</h2>”
-echo “<pre>$(grep -i security /var/log/apt/history.log | tail -10)</pre>”
-echo “</body></html>”
-} > $HTML_REPORT || error_exit “Failed to generate HTML report.”
-Send the report via email
+echo "<html><head></head><body>"
+echo "<h1>System Health Report - $(date +’%Y-%m-%d’)</h1>"
+echo "<h2>Uptime:</h2>"
+echo "<p>$(uptime)</p>"
+echo "<h2>CPU and Memory Usage:</h2>"
+echo "<pre>$(top -bn1 | head -5)</pre>"
+echo "<h2>Disk Usage:</h2>"
+echo "<pre>$(df -h)</pre>"
+echo "<h2>Recently Installed Security Patches:</h2>"
+echo "<pre>$(grep -i security /var/log/apt/history.log | tail -10)</pre>"
+echo "</body></html>"
+} > "$HTML_REPORT" || error_exit "Failed to generate HTML report."
 
-send_email $HTML_REPORT || error_exit “Failed to send email.”
-echo “System health report generated and sent successfully.”
+send_email $HTML_REPORT || error_exit "Failed to send email."
+echo "System health report generated and sent successfully."
 
 
 DevOps Class - 9-Assignment - 3
