@@ -1,0 +1,83 @@
+Q1. Creating Docker Container
+
+Objective:
+
+Running a PostgreSQL Database in a Docker Container.
+
+TASK - 1:
+Create a Docker container using the official postgres image.
+
+TASK - 2:
+
+Configure the container with the following environment variables:
+
+- POSTGRES_USER=myuser
+- POSTGRES_PASSWORD=mypassword
+- POSTGRES_DB=mydatabase
+
+TASK - 3:
+
+Start the container and verify it is running.
+
+TASK 4:
+
+Access the running container and interact with the database.
+
+Ans:
+
+docker pull postgres
+
+docker run -d \
+  --name my-postgres \
+  -e POSTGRES_USER=myuser \
+  -e POSTGRES_PASSWORD=mypassword \
+  -e POSTGRES_DB=mydatabase \
+  -p 5432:5432 \
+  postgres
+
+docker ps
+
+docker exec -it my-postgres bash
+
+psql -U myuser -d mydatabase
+
+CREATE TABLE test(id SERIAL PRIMARY KEY, name VARCHAR(50));
+INSERT INTO test(name) VALUES ('John Doe');
+SELECT * FROM test;
+
+
+Q2. Creating a Custom Docker Image
+
+Objective:
+Creating a Custom Docker Image
+
+Scenario:
+
+Under the /home/user/student/assignment/ directory, two files would help you run a flask application. Your tasks are listed below:
+TASK - 1:
+
+Create a Dockerfile for a Python web application that requires Python 3.8 and dependencies listed in the requirements.txt file. Ensure the working directory is set to /app and the application runs with the command python app.py.
+
+TASK - 2:
+
+Build the Docker image with the tag my-python-app.
+
+TASK - 3:
+
+Store all the build output to /home/user/docker_build_output.txt file.
+
+Ans:
+
+cd student/assignment
+sudo vi Dockerfile
+Paste the below configuration in Dockerfile:
+FROM python:3.8
+WORKDIR /app
+COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
+EXPOSE 80
+ENV NAME World
+CMD ["python", "app.py"]
+docker build -t my-python-app .
+docker image ls
+docker build -t my-python-app . > /home/user/docker_build_output.txt 2>&1
