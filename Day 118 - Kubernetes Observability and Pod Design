@@ -127,3 +127,100 @@ Switch traffic to the Green environment by updating the Service selector.
 
 Ans:
 
+vi green-deploy.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: green-config
+data:
+  index.html: |
+    <h1>Green</h1>
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+      version: green
+  template:
+    metadata:
+      labels:
+        app: nginx
+        version: green
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: html
+              mountPath: /usr/share/nginx/html
+      volumes:
+        - name: html
+          configMap:
+            name: green-config
+
+
+
+kubectl apply -f green-deploy.yaml
+
+kubectl patch svc nginx-service -p ‘{“spec”:{“selector”:{“version”:”green”}}}’
+
+
+
+Q10. Container Logs in Kubernetes
+
+Raw Problem
+
+Objective:
+
+Configure a Pod to generate logs at regular intervals. Retrieve and view the generated logs. Monitor the pod's resource usage.
+
+TASK - 1: Logging Task
+
+Create a Pod named log-app in the default namespace using the nginx:latest image.
+Configure the container to write a log message to /var/log/nginx.log file created inside the container every 10 seconds.
+
+TASK - 2: Monitoring Task
+
+Create a separate Pod named monitor-app in the default namespace using the nginx:latest image. Monitor and display the CPU and memory usage of the Pod.
+
+
+Ans:
+
+
+vi log.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-app
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    command: ["/bin/sh"]
+    args: ['-c', 'while true; do echo "$(date) - Log message from nginx"; sleep 10; done']
+
+    
+vi montor.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: monitor-app
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+kubectl apply -f log-app.yaml
+kubectl apply -f monitor-app.yaml
