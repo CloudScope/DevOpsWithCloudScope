@@ -1,0 +1,129 @@
+Q1. Probes in Kubernetes
+
+Raw Problem
+
+This assignment has three separate tasks involving readiness, liveness, and startup probes for managing different lifecycle aspects of Kubernetes pods. By configuring different probes to manage pod lifecycle events effectively, you can enhance the robustness and reliability of Kubernetes applications.
+
+TASK - 1:
+Readiness Probe Configuration
+
+Ensure a web application is ready to serve traffic only when a specific file is present.
+
+Pod Name: web-app
+Container Image: nginx:latest
+Probe Details: Check for a file /tmp/ready exists in the container created.
+Initial delay: 5 seconds, check every 10 seconds.
+
+TASK - 2:
+Liveness Probe Configuration
+
+Restart the service if it fails to respond for a specified duration.
+
+Pod Name: api-service
+Container Image: busybox
+Probe Details: Run a command to check if the /tmp/health exists in the container created.
+Check every 10 seconds with a failure threshold of 3.
+
+TASK - 3:
+Startup Probe Configuration
+
+Manage the initialization of a slow-starting application.
+
+Pod Name: slow-start-app
+Container Image: busybox
+Probe Details: Run the command cat /tmp/startup exists in the container created.
+The initial delay of 10 seconds, with a period of 5 seconds, allow 2 retries before failure.
+
+Objective:
+
+Create three separate pods, each configured with a specific probe to manage their lifecycle effectively based on the conditions specified in each task.
+
+Ans:
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-probe-app
+  namespace: default
+spec:
+  containers:
+  - name: web-app
+    image: nginx:latest
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        touch /tmp/ready; # Create the readiness file
+        nginx -g 'daemon off;'; # Start nginx
+    ports:
+      - containerPort: 80
+    readinessProbe:
+      exec:
+        command:
+        - sh
+        - -c
+        - "test -f /tmp/ready"
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+  - name: api-service
+    image: busybox
+    args:
+      - /bin/sh
+      - -c
+      - "touch /tmp/healthy; sleep 3600"
+    livenessProbe:
+      exec:
+        command:
+          - sh
+          - -c
+          - "test -f /tmp/healthy"
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      failureThreshold: 3   
+
+  - name: slow-start-app
+    image: busybox
+    args:
+      - /bin/sh
+      - -c
+      - "sleep 20; touch /tmp/startup; sleep 3600"
+    startupProbe:
+      exec:
+        command:
+          - cat
+          - /tmp/startup
+      initialDelaySeconds: 25
+      periodSeconds: 5
+      failureThreshold: 10
+
+Q2. Deployment Strategy in Kubernetes
+
+Raw Problem
+
+**Raw Problem**
+Objective
+
+The DevOps team wants to minimize downtime during updates. Implement a Blue Green deployment strategy using Nginx and ConfigMaps. Create two ConfigMaps for the Blue and Green environments with different index.html content. Deploy the Blue environment first and then switch traffic to the Green environment.
+
+TASK - 1:
+
+Create ConfigMaps for Blue and Green environments.
+
+TASK - 2:
+
+Deploy the Blue environment with a ConfigMap containing <h1>Blue</h1>.
+
+TASK - 3:
+
+Expose the Blue deployment.
+
+TASK - 4:
+
+Deploy the Green environment with a ConfigMap containing <h1>Green</h1>.
+
+TASK - 5:
+
+Switch traffic to the Green environment by updating the Service selector.
+
+Ans:
+
