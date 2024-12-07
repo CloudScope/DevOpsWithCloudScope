@@ -1,0 +1,70 @@
+Q1. Kubernetes Class 4 Assignment 5
+
+Raw Problem
+
+Objective:
+
+Secure Pod communication using Network Policies. Create two Pods named frontend and backend in the default namespace. Use the nginx image for both. Configure a Network Policy to allow only the frontend` Pod to communicate with the backend Pod, while blocking all other traffic.
+
+TASK - 1:
+
+Create the Pods.
+
+TASK - 2:
+
+Create a Network Policy to restrict communication.
+
+TASK - 3:
+
+Verify that the Network Policy is working as expected.
+
+Ans:
+
+vi pods.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backend
+  labels:
+    app: backend
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+    - containerPort: 80
+
+vi network-policy.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - protocol: TCP
+      port: 80
