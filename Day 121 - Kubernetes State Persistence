@@ -1,0 +1,248 @@
+Q1. Deployment's Readiness Probe
+
+Raw Problem
+
+Objective:
+
+Your team must ensure that a web application is ready to serve traffic only when a specific endpoint is responsive.
+Create a Deployment named web-app in the default namespace using the nginx:latest image. Configure a readiness probe that sends an HTTP GET request to the / endpoint.
+
+TASK - 1:
+
+Create the Deployment with the readiness probe.
+
+TASK - 2:
+
+Verify the Deployment's readiness status.
+
+Ans:
+
+vi web-app-service.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: default
+  labels:
+    app: nginx
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: web-app
+        image: nginx:latest
+        ports:
+        - name: liveness-port
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: liveness-port
+          failureThreshold: 1
+          periodSeconds: 10
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx
+
+kubectl apply -f web-app-service.yaml
+
+Q2. Kubernetes Class 4 Assignment 2
+
+A service needs to be restarted if it fails to respond to HTTP requests on the /healthz endpoint for more than 30 seconds. Create a Deployment named api-service in the default namespace using the busybox image. Configure a liveness probe that sends an HTTP GET request to the /healthz endpoint every 10 seconds and has a failure threshold of 3
+
+Create the Deployment with the liveness probe.
+Demonstrate how the Pod recovers from a failure.
+
+
+Ans:
+
+
+Q3. Kubernetes Class 4 Assignment 3
+
+Objective:
+
+Create a ConfigMap named app-config in the default namespace with a configuration file. Then, create a Pod named config-demo that mounts this ConfigMap as a volume. Use the nginx image and mount the configuration file at /etc/nginx/conf.d.
+
+Nginx config you should use:
+
+server {
+listen 80;
+server_name localhost;
+location / {
+root /usr/share/nginx/html;
+index index.html index.htm;
+}
+error_page 500 502 503 504 /50x.html;
+location = /50x.html {
+root /usr/share/nginx/html;
+}
+}
+
+TASK - 1:
+
+Create the ConfigMap with the configuration file.
+
+TASK - 2:
+
+Create the Pod that uses the ConfigMap as a volume.
+
+TASK - 3:
+
+Verify that the configuration file is correctly mounted.
+
+Ans:
+
+vi configmap.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: default
+data:
+  custom-nginx-config.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        location / {
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+
+vi nginx-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: config-demo
+  namespace: default
+spec:
+  containers:
+  - name: nginx
+    image: nginx:latest
+    volumeMounts:
+    - name: config-volume
+      mountPath: /etc/nginx/conf.d
+  volumes:
+  - name: config-volume
+    configMap:
+      name: app-config
+      items:
+      - key: custom-nginx-config.conf
+        path: custom-nginx-config.conf
+
+kubectl apply -f configmap.yaml
+kubectl apply -f nginx-pod.yaml
+
+
+Q4. Kubernetes Class 4 Assignment 4
+
+Objective:
+
+Deploy a secure and scalable stateful application within a Kubernetes cluster, using secrets for sensitive data management and ensuring persistent storage for each instance.
+
+TASK - 1:
+
+Create a Kubernetes Secret named db-secret in the default namespace containing credentials (username and password). Then, create a Pod named db-app using the busybox image that mounts this secret at /etc/db. This setup is intended to demonstrate handling sensitive configuration data securely within the cluster.
+
+TASK - 2:
+
+Deploy a StatefulSet named web with 3 replicas using the nginx image. Each replica should have its unique PersistentVolumeClaim to ensure that data is stored persistently and independently across Pods. This step showcases the management of stateful applications within Kubernetes, maintaining unique identities and stable storage.
+
+TASK - 3:
+
+Create a Headless Service named nginx to manage the network identities of the Pods within the StatefulSet. This service, using ClusterIP: None, facilitates direct network communication to and from individual Pods, important for applications where each Pod needs to be uniquely addressable.
+
+Ans:
+
+vi secret.yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: default
+type: Opaque
+data:
+  username: bXktdXNlcg==
+  password: bXktcGFzc3dvcmQ=  
+
+vi sts.yaml
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  serviceName: "nginx"
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: secret-volume
+              mountPath: /etc/db
+      volumes:
+        - name: secret-volume
+          secret:
+            secretName: db-secret
+  volumeClaimTemplates:
+    - metadata:
+        name: www
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+
+vi service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: default
+spec:
+  clusterIP: None
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 80
+
