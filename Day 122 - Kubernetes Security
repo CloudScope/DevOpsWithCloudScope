@@ -1,0 +1,130 @@
+Q2. Kubernetes Class 5 Assignment 2
+
+Objective:
+
+The DevOps team needs to implement Role-Based Access Control for the default.
+
+TASK - 1:
+
+Create a Role named pod-reader in the default namespace.
+
+The Role should have permission to get, watch, and list pods.
+
+TASK - 2:
+
+Create a RoleBinding to bind the pod-reader Role to the default.
+
+TASK - 3:
+
+Verify that the default can list pods in the default namespace but cannot perform other actions, such as creating or deleting pods.
+
+
+Ans:
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pod-reader
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pod-reader-binding
+  namespace: default
+subjects:
+- kind: User
+  name: default
+  namespace: default
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
+
+kubectl auth can-i list pods --as=dev-user --namespace=default
+
+Q3. Kubernetes Class 5 Assignment 3
+
+Objective:
+
+The DevOps team needs to enforce security contexts for pods to ensure they run with limited privileges.
+
+TASK -1:
+
+Create a Pod in the default namespace with the following security context. The Pod should use the nginxinc/nginx-unprivileged:latest image. Set the security context to disable privilege escalation and ensure the container runs as a non-root user.
+
+TASK - 2:
+
+Verify that the Pod is running with the specified security context by checking the Pod's details.
+
+Ans:
+
+vi secure-pod.yaml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-nginx-pod
+spec:
+  containers:
+  - name: nginx
+    image: nginxinc/nginx-unprivileged:latest
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+
+kubectl apply -f secure-pod.yaml
+
+kubectl get pod secure-nginx-pod -o jsonpath=’{.spec.containers[0].securityContext}’
+
+
+
+Q4. Kubernetes Class 5 Assignment 4
+
+TASK - 1:
+
+Create a ClusterRole named cluster-admin-role with administrative permissions. The ClusterRole should include permissions to manage all resources across all namespaces.
+
+TASK - 2:
+
+Create a ClusterRoleBinding to bind the cluster-admin-role to default.
+
+TASK - 3:
+
+Verify that the default can perform administrative actions such as creating a new namespace.
+
+Ans:
+
+vi role.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cluster-admin-role
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cluster-admin-binding
+subjects:
+- kind: User
+  name: default
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin-role
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl apply -f role.yaml
+
+
+
+
