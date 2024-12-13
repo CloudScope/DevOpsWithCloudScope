@@ -1,3 +1,53 @@
+TASK - 1:
+
+Generate a client certificate for the user dev-user. Create a private key and a certificate signing request (CSR) for the dev-user.
+Sign the CSR with the Kubernetes CA to generate the client certificate.
+
+TASK - 2:
+
+Configure the Kubeconfig file to use the new user. Update the Kubeconfig file to include the user dev-user and set the context to use this user.
+
+TASK - 3:
+
+Verify authentication. Use the new Kubeconfig file to interact with the cluster and verify that dev-user can authenticate by listing the nodes in the cluster.
+
+Ans:
+
+openssl genrsa -out dev-user.key 2048
+
+openssl req -new -key dev-user.key -out dev-user.csr -subj “/CN=dev-user/O=dev-group”
+
+CSR_CONTENT=$(cat dev-user.csr | base64	tr --d '\n')
+
+vi csr.yaml
+
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: dev-user-csr
+spec:
+  request: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2JEQ0NBVlFDQVFBd0p6RVJNQThHQTFVRUF3d0laR1YyTFhWelpYSXhFakFRQmdOVkJBb01DV1JsZGkxbgpjbTkxY0RDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBSWM4N20ra0NVbUxhcWR6CmxhUUgrakRkVm0xamhFa3E1S2RlNFlrZGc1MEdCdkdxRFQ3bHBZUXBOU0FMb3NlK2xDU3lBYjNuREN4VXhKZGQKeUhrelFoV1JpT010QmQzRmZ5Y0xtalp0QTI2eTIralJzWmxBbUpzYVBlMWZYVlhHWG5WR3o5cUJCa2JUN2ZrLwo0YUVyQTZ1dm9SL0hBaGZiN0E4QkdGK1lTRU9KYlQ5MWJGZDF5U3VLaVkzbzhQY2VqK2hJdm5GZUxqbGltSnJRCnQ5OFpLOXpRZGRVWkJNamt4SmZ0WWF1dDVIa1E4bnV5cHkyMnlGMHRPSkQxdjc2WnllZWhzYUxKL0szRlh4bHIKek5JSDdEWW5DbDZFQ21uck52RHRpOWttZk1kb05TUEdLaGV3Tm00RVQvUGVFYmJDVWl0a0xCVTM2VUlTMTQ3VQpwalUvRHFzQ0F3RUFBYUFBTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFCSmRRODJzWnA3V0htVk9YVXhsV0lBCitockw4UC9pejdYTm5JekxGVWtGSXNycEQ4NWs2eGV6cy9wRWo5YWRUL1MxTWdnR1ZNRENnNFMxN1RjUFVVRGQKQlBVZkoyQ3FqVVJiczYwanFwbmkxeUZnRXN3NUdLV0hscmxsVkFEOHVFb1VqakljcUtpZUR4YUZRYWRpTmo3NgpQZG4ycHhVMSsxUll3dDM3bXVFZnFjWklhdTlOMmI1YkZxZmJSY0FwZmNwVjFMbTZwZmlxY0l2Wi9mb3JSVlZzCkVFb2J2QzNtd3k5cUwrUVJrbjBLUmQ1T3gxMFlVbjhRc245RmNEVm8vazM4VkJRMmZFVHlhRHdkUW1Cd3JMbnYKVmVqc2s5bmVFbzNwSjExM3NXQ1NMWnNmVWZodFJXYW1FWEIxS29GUXd2eDgzZWsrM25aVE9oQ3llbnErKzdMNwotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0K
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth
+
+kubectl apply -f csr.yaml
+
+kubectl certificate approve dev-user-csr
+
+kubectl get csr dev-user-csr -o jsonpath=’{.status.certificate}’ | base64 -–decode > dev-user.crt
+
+kubectl config set-credentials dev-user --client-certificate=dev-user.crt --client-key=dev-user.key
+
+kubectl config set-context dev-context --cluster=default --user=dev-user
+
+kubectl config use-context dev-context
+
+sudo chown $(whoami) /etc/rancher/k3s/k3s.yaml
+
+sudo chmod u+rw /etc/rancher/k3s/k3s.yaml
+
+
 Q2. Kubernetes Class 5 Assignment 2
 
 Objective:
@@ -20,6 +70,8 @@ Verify that the default can list pods in the default namespace but cannot perfor
 
 
 Ans:
+
+vi role.yaml
 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -45,8 +97,10 @@ roleRef:
   name: pod-reader
   apiGroup: rbac.authorization.k8s.io
 
+kubectl apply -f role.yaml
 
 kubectl auth can-i list pods --as=dev-user --namespace=default
+
 
 Q3. Kubernetes Class 5 Assignment 3
 
