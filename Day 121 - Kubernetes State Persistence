@@ -75,7 +75,40 @@ Demonstrate how the Pod recovers from a failure.
 
 
 Ans:
+vi pod.yaml
 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-service
+  template:
+    metadata:
+      labels:
+        app: api-service
+    spec:
+      containers:
+      - name: busybox
+        image: busybox
+        args:
+        - /bin/sh
+        - -c
+        - |
+          i=0; while true; do { echo -e “HTTP/1.1 200 OK\n\n Healthy”; i=((i+1));if[“i” -eq 5 ]; then break; fi } | nc -l -p 8080 -q 1; done
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+
+kubectl apply -f pod.yaml
 
 Q3. Kubernetes Class 4 Assignment 3
 
