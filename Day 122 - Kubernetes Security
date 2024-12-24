@@ -15,9 +15,9 @@ Ans:
 
 openssl genrsa -out dev-user.key 2048
 
-openssl req -new -key dev-user.key -out dev-user.csr -subj “/CN=dev-user/O=dev-group”
+openssl req -new -key dev-user.key -out dev-user.csr -subj "/CN=dev-user/O=dev-group"
 
-CSR_CONTENT=$(cat dev-user.csr | base64	tr --d '\n')
+CSR_CONTENT=$(cat dev-user.csr | base64 -w 0 )
 
 vi csr.yaml
 
@@ -35,7 +35,7 @@ kubectl apply -f csr.yaml
 
 kubectl certificate approve dev-user-csr
 
-kubectl get csr dev-user-csr -o jsonpath=’{.status.certificate}’ | base64 -–decode > dev-user.crt
+kubectl get csr dev-user-csr -o jsonpath='{.status.certificate}' | base64 -d > dev-user.crt
 
 kubectl config set-credentials dev-user --client-certificate=dev-user.crt --client-key=dev-user.key
 
