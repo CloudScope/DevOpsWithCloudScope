@@ -19,7 +19,6 @@ openssl req -new -key dev-user.key -out dev-user.csr -subj "/CN=dev-user/O=dev-g
 
 CSR_CONTENT=$(cat dev-user.csr | base64 -w 0 )
 
-LS0tLS1CRUdJTiBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0KTUlJQ2JEQ0NBVlFDQVFBd0p6RVJNQThHQTFVRUF3d0laR1YyTFhWelpYSXhFakFRQmdOVkJBb01DV1JsZGkxbgpjbTkxY0RDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBS1NXaE91OUhUamVuSE5VCkhVUkxpejZSQnlBM2xOU0pFZmNiSUZGSmdMZmRvbkQxampNYm0xeHY2NXJwZmpuaHNIZWVOWkdwK0NkWGVqQUcKazFHMUZqdk1DR3JSdkM1K2E3aklqaWVONlVTbENPRnIrZjQyZkhBdnNIMHJ4bVVXOUN3SHZYaHZ6U0p5Nk9JTAo1cXlCODZLQ2hRc1l1bEpPOCt5YUJVcHg4L1VXanZzb09mZzhpREtXSFB1V0pONG53Q2p6aW5Bd0xIZ3BOSGtDCjVYb09jZ05ueVA1N3VIZHVRV2xRMjk1U3k2bk5qTVdZQUZob2NaUVpTOXo2NGdxZFFSNEZzTURmeE9RR0Iwa0gKVDlwbk85MkVHK0pUWFdhWFNTMGFEbHJoZENveXByR1FvZFcwUHdIWGhjNmVrNHd0ZFN3N3JEMjF3ZzY2TWM5RwpLbGczSXIwQ0F3RUFBYUFBTUEwR0NTcUdTSWIzRFFFQkN3VUFBNElCQVFBcFI1ZVFKZjFab0tDc3phVUtzZmFkCkZPbko0V3YrLzczYUhLdnJJS1RYZk9pNVd1Rkg4d210aEttdVFpQ1QxY0V0NHdmSThxR05iMGllWFhNUXpISDMKZG90WHZ3K2pXeGxFclhZdDIzREI1RmVOc2p4d2ZuRGRGcVl4ZWFMaWFCSGUrOXRZYVBZY2xYdVdWeTFWUzdmZwo1MmpnYk5jajd6ZThCYmMySDJkYWN2d3UvYkNnbUlTcWttQS9qcU43b3JVNnJaUmdNSTFMWmZjanlGSzVQUlFSCm5BeGh1V2tUTmlSYm9aWGgyTVRaNE5Ib3ltcnpkZmFLbmljaHAxbFZzdDd5Q1VWeHdWNEwzb1VtWkw0OUlzTTQKT1NuK1ZWQmlLOVVmZk1pMlpYdFRrYzhqQ2VqMVdSMnN2T0lmYkZ0VndSYzRJUzAzWDB6OUpOaVhQUlNLVVAzbAotLS0tLUVORCBDRVJUSUZJQ0FURSBSRVFVRVNULS0tLS0K
 vi csr.yaml
 
 apiVersion: certificates.k8s.io/v1
@@ -35,6 +34,32 @@ spec:
 kubectl apply -f csr.yaml
 
 kubectl certificate approve dev-user-csr
+
+vi role.yaml
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dev-user-cluster-role
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dev-user-cluster-rolebinding
+subjects:
+- kind: User
+  name: dev-user
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: dev-user-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl apply role.yaml
 
 kubectl get csr dev-user-csr -o jsonpath='{.status.certificate}' | base64 --decode > dev-user.crt
 
