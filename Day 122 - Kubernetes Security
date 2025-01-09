@@ -207,5 +207,62 @@ roleRef:
 kubectl apply -f role.yaml
 
 
+Q5. Kubernetes Resource Monitoring and Management
 
+Create the two deployments below:
+
+Deployment 1: Nginx Deployment, serving as a front-end web server.
+Deployment 2: Redis Deployment, used as an in-memory data store to enhance performance by caching frequent queries.
+
+Task 1: Obtain detailed information about the Nginx and Redis deployments by listing details of Nginx and Redis Deployments and examining resource requests, limits, labels, selectors, and the scaling and update strategies used for these deployments.
+
+Task 2: Evaluate resource utilization efficiency for both deployments to identify optimization opportunities by checking current resource usage and monitor real-time CPU and memory usage for pods labeled as part of the Nginx and Redis deployments.
+
+Task 3: Plan for scaling and resource adjustment by setting up Horizontal Pod Autoscaler for Nginx, i.e., implement an HPA to manage variability in web traffic, allowing Kubernetes to automatically adjust the number of Nginx pods based on CPU utilization.
+
+For HPA, use the CPU Percentage as 50 with a minimum 5 pods and maximum 10 pods.
+
+
+Ans:
+
+vi nginx.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "200Mi"
+          limits:
+            cpu: "200m"
+            memory: "400Mi"
+kubectl apply -f nginx-deployment.yaml
+
+kubectl get deployments nginx-deployment -o wide
+
+kubectl top pods -l app=nginx
+
+kubectl autoscale deployment nginx-deployment –cpu-percent=50 –min=5 –max=10
+
+kubectl get hpa
+kubectl get pods -l app=nginx
 
