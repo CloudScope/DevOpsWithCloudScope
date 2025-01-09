@@ -1,0 +1,97 @@
+Q1. Kubernetes Class 6 Assignment 1
+
+
+
+
+
+
+Q2. Kubernetes Class 6 Assignment 2
+
+Raw Problem
+
+Objective:
+
+The DevOps team needs to manage a complex application with multiple components using a wrapper chart.
+
+TASK - 1:
+
+Initialize a new Helm chart named myapp.
+Add dependencies for mysql and wordpress sub-charts from the Bitnami repository.
+
+TASK - 2:
+
+Modify the values.yaml file in the wrapper chart to set custom values for the mysql and wordpresssub-charts, such as database configuration and WordPress settings.
+
+TASK - 3:
+
+Use the helm install command to deploy the wrapper chart.
+Verify that MySQL and WordPress components are deployed with the specified custom values.
+
+Ans:
+
+$ helm create myapp
+
+$ cd myapp
+
+vi Chart.yaml
+
+apiVersion: v2
+name: myapp
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+
+appVersion: "1.16.0"
+dependencies:
+  - name: mysql
+    version: 12.2.1
+    repository: https://charts.bitnami.com/bitnami
+  - name: wordpress
+    version: 15.2.5
+    repository: https://charts.bitnami.com/bitnami
+
+$ helm dependency update
+
+$ vi values.yam
+
+mysql:
+  auth:
+    rootPassword: "securepassword"
+    database: "wordpress_db"
+    username: "wp_user"
+    password: "wp_password"
+  primary:
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+wordpress:
+  wordpressUsername: "admin"
+  wordpressPassword: "adminpassword"
+  wordpressEmail: "admin@example.com"
+  wordpressFirstName: "Admin"
+  wordpressLastName: "User"
+  wordpressBlogName: "My Blog"
+  externalDatabase:
+    host: "myapp-mysql"
+    user: "wp_user"
+    password: "wp_password"
+    database: "wordpress_db"
+  service:
+    type: ClusterIP
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "512Mi"
+    limits:
+      cpu: "600m"
+      memory: "1Gi"
+
+$ helm install myapp ./myapp
+
+
+
