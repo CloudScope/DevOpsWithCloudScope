@@ -1,0 +1,154 @@
+Q1. Kubernetes Class 7 Assignment 1
+
+### Scenario:
+
+A SaaS provider needs to deploy isolated environments for different customers (tenants) on the same Kubernetes cluster. Each tenant requires specific configurations such as resource limits and custom domain names. The application includes a PostgreSQL database and a WordPress front-end.
+
+### Objective:
+
+1. **Set Up the Base Configuration.**
+
+- Create a base directory with the common Kubernetes resource files for PostgreSQL and WordPress.
+- Define a `kustomization.yaml` file in the base directory.
+
+2. **Create Tenant-Specific Overlays.**
+
+- Create separate directories for each tenant (`tenant1`, `tenant2`, `tenant3`).
+- Define a `kustomization.yaml` file in each tenant directory with the necessary patches and customizations for the tenant.
+
+3. **Deploy the Application.**
+
+- Use `kubectl apply -k` to deploy the application for each tenant.
+- Verify that the configurations are correctly applied for each tenant.
+
+Ans:
+
+mkdir -p base
+cd base
+
+vi postgres-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:latest
+        env:
+        - name: POSTGRES_DB
+          value: wordpress
+        - name: POSTGRES_USER
+          value: wp_user
+        - name: POSTGRES_PASSWORD
+          value: wp_pass
+        ports:
+        - containerPort: 5432
+
+vi wordpress-deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+      - name: wordpress
+        image: wordpress:latest
+      env:
+      - name: WORDPRESS_DB_HOST
+        value: postgres
+      - name: WORDPRESS_DB_USER
+        value: wp_user
+      - name: WORDPRESS_DB_PASSWORD
+        value: wp_pass
+      - name: WORDPRESS_DB_NAME
+        value: wordpress
+      ports:
+      - containerPort: 80
+
+vi postgres-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+
+vi wordpress-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordpress
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: wordpress
+
+vi kustomization.yaml
+
+resources:
+  - postgres-deployment.yaml
+  - wordpress-deployment.yaml
+  - postgres-service.yaml
+  - wordpress-service.yaml
+
+cd ..
+mkdir -p overlays/tenant1 overlays/tenant2 overlays/tenant3
+cd overlays/tenant1
+
+vi kustomization.yaml
+
+resources:
+  - ../../base
+patchesStrategicMerge:
+  - patch.yaml
+
+vi patch.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+spec:
+  template:
+    spec:
+      containers:
+      - name: wordpress
+      resources:
+        limits:
+          cpu: “1”
+          memory: 500Mi
+
+kubectl apply -k overlays/tenant1
+kubectl apply -k overlays/tenant2
+kubectl apply -k overlays/tenant3
+
+kubectl get deployments,services
