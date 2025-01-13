@@ -1,7 +1,38 @@
 Q1. Kubernetes Class 6 Assignment 1
 
+Objective:
+Deploy the Docker nginx application into a Kubernetes cluster and use Helm for its management.
 
+Steps:
 
+Task 1: Initialize the Helm Chart
+
+Create a Helm Chart: Start by creating a Helm chart named nginx. This creates the necessary structure for Helm deployment configurations.
+Configure the Chart:
+Chart.yaml: Populate this file with the chart’s name, version, and a brief description.
+values.yaml: There is docker image named nginx included in the values.yaml, update the tag to latest.
+Task 2: Deploy the Application
+
+Deploy with Helm: Use Helm to deploy the chart to the Kubernetes cluster with the command that initiates the deployment. Name of deployment is nginx-deployment
+
+Ans:
+
+$ helm create nginx
+$ cd nginx
+
+$ vi values.yaml
+# Change the image tag to latest.
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+
+$ cd ..
+$ helm install nginx-deployment-nginx ./nginx
 
 
 
