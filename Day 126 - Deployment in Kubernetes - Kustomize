@@ -23,6 +23,11 @@ A SaaS provider needs to deploy isolated environments for different customers (t
 
 Ans:
 
+$ curl -LO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.6.0/kustomize_v5.6.0_linux_amd64.tar.gz"
+$ tar -zxvf kustomize_v5.6.0_linux_amd64.tar.gz
+$ sudo mv kustomize /usr/local/bin/
+$ chmod +x /usr/local/bin/kustomize
+
 mkdir -p base
 cd base
 
@@ -74,17 +79,17 @@ spec:
       containers:
       - name: wordpress
         image: wordpress:latest
-      env:
-      - name: WORDPRESS_DB_HOST
-        value: postgres
-      - name: WORDPRESS_DB_USER
-        value: wp_user
-      - name: WORDPRESS_DB_PASSWORD
-        value: wp_pass
-      - name: WORDPRESS_DB_NAME
-        value: wordpress
-      ports:
-      - containerPort: 80
+        env:
+        - name: WORDPRESS_DB_HOST
+          value: postgres
+        - name: WORDPRESS_DB_USER
+          value: wp_user
+        - name: WORDPRESS_DB_PASSWORD
+          value: wp_pass
+        - name: WORDPRESS_DB_NAME
+          value: wordpress
+        ports:
+        - containerPort: 80
 
 vi postgres-service.yaml
 
@@ -142,13 +147,14 @@ spec:
     spec:
       containers:
       - name: wordpress
-      resources:
-        limits:
-          cpu: “1”
-          memory: 500Mi
+        resources:
+          limits:
+            cpu: "1"
+            memory: 500Mi
 
 kubectl apply -k overlays/tenant1
 kubectl apply -k overlays/tenant2
 kubectl apply -k overlays/tenant3
 
 kubectl get deployments,services
+
