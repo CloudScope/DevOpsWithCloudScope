@@ -125,4 +125,239 @@ wordpress:
 $ helm install myapp ./myapp
 
 
+Q3. Kubernetes Class 6 Assignment 3
+
+reating and Configuring Ingress for the Nginx Website
+The objective of this assignment is to create a Helm chart for an Nginx website, configure an Ingress resource to route traffic, and serve a "Hello World" page using a ConfigMap. Follow the steps below to complete the task:
+
+1. Create the Helm Chart
+Create a Helm chart named nginx-website.
+Ensure the chart structure includes the values.yaml file for configuration and the templates directory for resource definitions.
+2. Define the values.yaml File
+Update the values.yaml file to include the following configurations:
+
+Deployment Configurations:
+
+replicaCount: Number of replicas for the deployment.
+image: Specifications for the Nginx container image.
+repository: The image repository: nginx.
+tag: The tag for the image : latest.
+pullPolicy: The image pull policy : IfNotPresent.
+Service Configurations:
+
+type: Set to ClusterIP.
+port: The port on which the service is exposed : 80.
+Ingress Configurations:
+
+enabled: Enable the Ingress resource.
+className: Optional class name for the Ingress.
+annotations: Ingress annotations for additional settings like rewrite rules.
+nginx.ingress.kubernetes.io/rewrite-target: Optional rewrite target configuration.
+hosts: List of hosts and paths for the Ingress.
+host: Hostname nginx.example.com.
+paths: Paths and their types.
+path: URL path /.
+pathType: Path type ImplementationSpecific.
+Volumes and Volume Mounts Configurations:
+
+volumes: Definitions for volumes.
+name: Name of the volume html.
+configMap: Reference to a ConfigMap containing the volume data.
+name: Name of the ConfigMap hello-world-html-cm.
+volumeMounts: Where to mount the volumes inside the container.
+name: Reference to the volume name.
+mountPath: Container path where the volume is mounted /usr/share/nginx/html.
+Add the volume as well as in the next step you are going to create configmap.
+
+3. Add a ConfigMap to Serve HTML Content
+Create a ConfigMap named configmap.yaml in the templates directory. Name of the ConfigMap is hello-world-html-cm
+The ConfigMap should store the HTML content for a simple "Hello World" page.
+Ensure the ConfigMap's data includes a file named index.html with the HTML structure of the page.
+    <html>
+    <head><title>Hello World</title></head>
+    <body>
+      <h1>Hello, World!</h1>
+      <p>This is a simple Nginx server.</p>
+    </body>
+    </html>
+After creating the configmap, Deploy the Chart with Ingress.
+
+4. Test the Ingress Configuration
+Access the website using the curl configured hostname (e.g., http://nginx.example.com).
+Verify that the "Hello World" page is displayed as expected.
+
+
+Ans:
+
+helm create nginx-website
+
+vi values.yaml
+# Default values for nginx-website.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: ""
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: nginx.example.com
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+# Additional volumes on the output Deployment definition.
+volumes:  
+  - name: html  
+    configMap:  
+      name: hello-world-html-cm
+
+volumeMounts:
+  - name: html
+    mountPath: /usr/share/nginx/html
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+# volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+cd templates
+vi configmap.yaml
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hello-world-html-cm
+data:
+  index.html: |
+    <html>
+    <head><title>Hello World</title></head>
+    <body>
+      <h1>Hello, World!</h1>
+      <p>This is a simple Nginx server.</p>
+    </body>
+    </html>
+cd
+helm install nginx-website ./nginx-website
+sudo vi /etc/hosts
+
+127.0.0.1       localhost nginx.example.com 
+
+curl http://nginx.example.com/
+
+
+Q4. Kubernetes Class 6 Assignment 4
+
+Using Helm Commands with Nginx
+The DevOps team needs to perform basic Helm operations for managing releases. You will use the Bitnami Nginx chart for
+this assignment. Follow the instructions below to complete the tasks.
+
+TASK-1: Install the Bitnami Nginx Helm Chart.
+
+1. Use the helm install command to deploy the Bitnami Nginx chart with the release name my-nginx and set the
+service type to ClusterIP .
+
+2. Verify the installation by listing the Helm releases and checking the deployed resources.
+
+
+TASK-2: Upgrade the Nginx Release to Change Replica Count.
+
+1. Modify a value to change the replica count from 1 to 2 and make sure to set service type to ClusterIP while changing the replica count.
+
+2. Verify that the changes are reflected in the deployed resources.
+
+Ans:
+
+$ helm install my-nginx oci://registry-1.docker.io/bitnamicharts/nginx
+$ vi values.yaml
+
+replicaCount: 2
+service:
+  type: ClusterIP
+
+$ helm upgrade my-nginx oci://registry-1.docker.io/bitnamicharts/nginx -f values.yaml
+
 
