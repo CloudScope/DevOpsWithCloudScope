@@ -158,3 +158,151 @@ kubectl apply -k overlays/tenant3
 
 kubectl get deployments,services
 
+Q2. Kubernetes Environment Configuration with Kustomize
+
+**Raw Problem**
+Scenario
+A company is developing a microservices-based application that includes MySQL and NGINX components. To ensure efficient management across multiple stages of the development lifecycle, the application needs to be deployed in three distinct environments: dev and staging. Each of these environments has unique configuration requirements in terms of the number of replicas, resource limits, and other environmental-specific settings.
+
+Objective
+The main objective of this assignment is to set up a structured Kubernetes deployment using Kustomize, which allows for resources configurations and environment-specific overrides through overlays. This setup should streamline the process of managing configurations across multiple environments, reducing redundancy and improving maintainability.
+
+Tasks
+- Install Kustomize
+
+- Set Up the Resources Configuration: Establish a foundational configuration that includes Kubernetes deployment and service definitions for a combined MySQL and NGINX setup, named mysql-nginx. You will create a resource directory that contains the deployments and services, which will be common across all environments. This includes setting up standard configurations for MySQL and NGINX deployments.
+
+- Create Environment-Specific Overlays: Customize the resource configuration for dev and staging environments using Kustomize overlays. You will create separate directories for each environment under an overlays folder. Each directory will contain a kustomization.yaml file and necessary patches that adjust the resources configurations to meet the specific needs of each environment. Adjustments may include changes in the number of replicas, resource allocations (CPU and memory limits), and any other necessary customizations.
+
+- Deploy the Application: Apply the configurations to deploy the application in each specified environment and verify their correctness. Utilize kubectl apply -k to deploy the application for each environment using the configurations specified in the overlays. After deployment, you should verify that the configurations have been correctly applied and that the application behaves as expected in each environment.
+
+Expected Configurations:
+
+Service Name: mysql-nginx
+Resources Configuration: Standard deployment of MySQL and NGINX with moderate resource limits and a single replica as a starting point.
+Development Overlay: Replicas-1, Memory-256Mi, CPU-500m
+Lower CPU and memory limits to reflect the lower expected load.
+Staging Overlay:Replicas-2, Memory-512Mi, CPU-1
+
+
+Ans:
+
+curl -LO "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.6.0/kustomize_v5.6.0_linux_amd64.tar.gz"
+tar -zxvf kustomize_v5.6.0_linux_amd64.tar.gz
+sudo mv kustomize /usr/local/bin/
+chmod +x /usr/local/bin/kustomize
+
+mkdir -p resources
+cd resources
+
+vi deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-nginx
+spec:
+  selector:
+    matchLabels:
+      app: mysql-nginx
+  template:
+    metadata:
+      labels:
+        app: mysql-nginx
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:5.7
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: password
+          ports:
+            - containerPort: 3306
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+
+vi service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-nginx-service
+spec:
+  selector:
+    app: mysql-nginx
+  ports:
+    - name: http 
+      protocol: TCP
+      port: 80
+      targetPort: 80
+    - name: mysql 
+      protocol: TCP
+      port: 3306
+      targetPort: 3306
+vi kustomization.yaml
+
+resources:
+  - deployment.yaml
+  - service.yaml
+
+mkdir -p overlays/dev overlays/staging
+
+cd overlays/dev
+vi kustomization.yaml
+
+resources:
+  - ../../resources
+patches:
+  - path: patch.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: mysql-nginx
+vi patch.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-nginx
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: mysql
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+
+kubectl apply -k overlays/dev/
+kubectl get pods
+kubectl get service
+kubectl get deployments
+
+Create and check for other environments following the above steps - staging
+
+staging/patch.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-nginx
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: mysql
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1"
+      - name: nginx
+        resources:
+          limits:
+            memory: "512Mi"
+            cpu: "1"
