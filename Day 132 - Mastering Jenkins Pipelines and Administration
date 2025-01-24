@@ -1,0 +1,77 @@
+Q18. Jenkins Class 3 Assignment 3
+
+Create a Jenkins pipeline that dynamically generates an HTML report, archives it as a build artifact, and publishes it using the HTML Publisher plugin. Use html-report as the directory name and html-report.html as the report file name.
+
+Jenkins Credentials:
+
+admin
+admin
+Step 1: Set Up Jenkins
+Log In to Jenkins:
+Open the Jenkins dashboard and log in as an administrator.
+Install HTML Publisher Plugin:
+Go to Manage Jenkins → Manage Plugins.
+Under the Available tab, search for the HTML Publisher Plugin.
+Install it by clicking Install without restart.
+Confirm the plugin is installed under the Installed tab.
+Step 2: Create a New Pipeline Job
+Create a Pipeline Job:
+Go to the Jenkins dashboard and click New Item.
+Enter a name, e.g., custom-html-report-pipeline.
+Choose Pipeline as the job type and click OK.
+Configure the Job:
+Scroll to the Pipeline section in the job configuration.
+Choose Pipeline script as the definition.
+Step 3: Prepare the Report Directory and HTML Template
+Define Report Directory:
+Use the directory name html-report for storing the HTML report.
+HTML File Name:
+Use html-report.html as the report file name.
+HTML Report Content:
+The HTML report should contain the following structure: html <html> <head> <title>Custom HTML Report</title> </head> <body> <h1>Build Test Report</h1> <p>All stages executed successfully.</p> </body> </html>
+Step 4: Add Pipeline Stages
+Stages Overview:
+Build Stage: Simulates the build process.
+Run Tests and Generate Report Stage: Creates the report directory and file.
+Archive Report Stage: Archives the html-report.html file from the html-report directory.
+Publish HTML Report Stage: Publishes the report using the HTML Publisher plugin.
+Steps:
+Report Directory: All report-related files will be stored in html-report.
+HTML Report Name: File name is html-report.html.
+Step 5: Run and Verify
+Run the Pipeline:
+Save the job configuration and trigger the build by clicking Build Now.
+Verify Report:
+Check the archived artifacts for html-report/html-report.html.
+Confirm the published report is visible under the HTML Report tab.
+
+Ans:
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Setup'){
+            steps {
+                script {
+                    sh "rm -rf *"
+                sh "mkdir html-report"
+                def htmlContent = """
+                <html> <head> <title>Custom HTML Report</title> </head> <body> <h1>Build Test Report</h1> <p>All stages executed successfully.</p> </body> </html>
+                """
+                writeFile file: 'html-report/html-report.html', text: htmlContent
+            }}
+        }
+        stage('Deploy html site') {
+            steps {
+                  publishHTML (target : [allowMissing: false,
+                  alwaysLinkToLastBuild: true,
+                  keepAll: true,
+                  reportDir: 'html-report',
+                  reportFiles: 'html-report.html',
+                  reportName: 'My Reports',
+                  reportTitles: 'The Report'])                
+            }
+        }
+    }
+}
