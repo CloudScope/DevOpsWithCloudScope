@@ -1,0 +1,94 @@
+Q2. Creating a Custom Docker Image
+Objective:
+
+Creating a Custom Docker Image
+
+Scenario:
+
+Under the /home/user/student/assignment/ directory, two files would help you run a flask application. Your tasks are listed below:
+
+TASK - 1:
+
+Create a Dockerfile for a Python web application that requires Python 3.8 and dependencies listed in the requirements.txt file. Ensure the working directory is set to /app and the application runs with the command python app.py.
+
+TASK - 2:
+
+Build the Docker image with the tag my-python-app.
+
+TASK - 3:
+
+Store all the build output to /home/user/docker_build_output.txt file.
+
+
+Ans:
+
+cd student/assignment
+sudo vi Dockerfile
+
+Paste the below configuration in Dockerfile:
+
+FROM python:3.8
+WORKDIR /app
+COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
+EXPOSE 80
+ENV NAME World
+CMD ["python", "app.py"]
+docker build -t my-python-app .
+
+docker image ls
+
+docker build -t my-python-app . > /home/user/docker_build_output.txt 2>&1
+
+Q3. Optimizing Docker Images
+
+Objective:
+
+Optimizing Docker Images
+
+Scenario:
+
+Under the /home/user/student/assignment/ directory, two files would help you run a node application. Your tasks are listed below:
+
+TASK - 1:
+
+Create a Dockerfile using multi-stage builds for a Node.js application. The first stage should use node:14 to install dependencies and build the application. The second stage should create a minimal runtime environment using node:14-alpine.
+
+TASK - 2:
+
+Build the Docker image with the tag optimized-node-app.
+
+TASK - 3:
+
+Store all the build output in /home/user/docker_build_output.txt file.
+
+Ans:
+
+cd student/assignments
+sudo vi Dockerfile
+
+Paste the below configuration in dockerfile:
+
+Stage 1: Build the application
+FROM node:14 as builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+Modify to stage two using the below configuration:
+
+Stage 2: Setup the production environment
+FROM node:14-alpine
+WORKDIR /app
+COPY -–from=builder /app ./build
+COPY –-from=builder /app/node_modules ./node_modules
+EXPOSE 3000
+CMD [“node”, “build/app.js”]
+
+docker build -t optimized-node-app -f /home/user/student/assignments/Dockerfile .
+
+docker image ls
+
+docker build -t optimized-node-app -f /home/user/student/assignments/Dockerfile . > /home/user/docker_build_output.txt 2>&1
