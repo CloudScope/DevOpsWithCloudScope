@@ -1,0 +1,50 @@
+Q14. ArgoCD Class 1 Assignment 4
+
+Title: Deploy the helm-guestbook Application Using ArgoCD
+
+Objective:
+Deploy the helm-guestbook application using ArgoCD, ensuring proper use of Helm configuration and production values.
+
+Requirements:
+Fork the ArgoCD example applications repository from your gitea :
+Create an Application CR for the helm-guestbook app.
+Ensure the namespace helm-guestbook is automatically created by ArgoCD.
+Configure sync policy with automated sync, prune, and self-heal.
+Use values-production.yaml from the Helm chart to apply production values. There is already service type LoadBalancer has configured but change that to NodePort.
+Apply the Application CR using kubectl to deploy the app.
+Verify the deployment and ensure it is in a Healthy and Synced state.
+
+Ans:
+change values-production.yaml to nodePort
+
+service:
+  type: NodePort
+
+vi helm-guestbook.yaml 
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: helm-guestbook
+  namespace: argocd
+spec:
+  destination:
+    namespace: helm-guestbook
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://4405eb9c72083919d100281d8169a15b-3000.maxwell.assessments.scaler.com/john_doe/argocd-example-apps.git # Can point to either a Helm chart repo or a git repo.
+    targetRevision: master  # For Helm, this refers to the chart version.
+    path: helm-guestbook
+    helm:
+        valueFiles:
+        - values-production.yaml
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+
+kubectl apply -f helm-guestbook.yaml
