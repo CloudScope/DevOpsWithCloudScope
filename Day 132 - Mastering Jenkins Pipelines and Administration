@@ -75,3 +75,41 @@ pipeline {
         }
     }
 }
+
+Q17. Jenkins Class 3 Assignment 2
+
+
+Ans:
+
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'smartlizzard/test'
+        TAG = 'latest'
+    }
+
+    stages {
+            stage('Cloning Git') {
+                steps {
+                    git 'https://github.com/smartlizzard/Smart-Bank-UI.git'
+                }
+            }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker build -t $IMAGE_NAME:$TAG .
+                        docker push $IMAGE_NAME:$TAG
+                        docker logout
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
+
