@@ -1,0 +1,89 @@
+Q12. Ansible Class 1 Assignment 1
+
+
+Assignment: Configure a Remote Server as a Web Server Using Ansible
+Assignment Overview
+In this assignment, you will use Ansible within an Ansible control container to configure a remote server (server1). You are provided with:
+
+An Ansible control container with terminal access (using ttyd) where you will write and run your Ansible playbook.
+A remote server, server1, which will be configured by your Ansible playbook.
+Server Details
+Remote Server Hostname: server1
+SSH Username: server1_admin
+SSH Password: server1_admin@123!
+Tasks
+Task 1: Update Inventory File
+Create or update an Ansible inventory file named inventory.ini within the directory /home/user/workspace/. This inventory should include server1 with the provided connection details, specifying how Ansible should connect to server1.
+
+This should contain the following information like:
+
+In your inventory.ini file, list the server under the [webservers] group and specify the connection details using the variables names and values as follows:
+
+ansible_host: The IP address or hostname of the server. In this case, use server1.
+ansible_user: The SSH username to connect to the server. Use server1_admin.
+ansible_ssh_pass: The SSH password for the user. Use server1_admin@123!.
+Task 2: Test Connectivity
+Use the ping module to test connectivity to all hosts in your inventory.
+Important: Redirect the output of this command to a file named ping_results.txt in your workspace directory.
+command > /home/user/workspace/ping_results.txt
+Task 3: Set Up Connection
+Use the setup module to gather system facts from all managed nodes.
+Filter the output to display only the operating system and its version ansible_distribution and ansible_distribution_version .
+Important: Redirect the output of this command to a file named system_info.txt in your workspace directory
+command > /home/user/workspace/ping_results.txt
+
+Ans:
+
+cd workspace
+vi inventory.ini
+
+[webservers]
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123!
+ansible webservers -i /home/user/workspace/inventory.ini -m ping > /home/user/workspace/ping_results.txt
+ansible webservers -i /home/user/workspace/inventory.ini -m setup -a 'filter=ansible_distribution*' > /home/user/workspace/system_info.txt
+
+
+Q13. Package Management and User Creation
+
+Assignment: Package Management and User Creation
+Assignment Overview
+In this assignment, you will use Ansible within an Ansible control container to configure a remote server (server1) as a web server. This exercise will demonstrate your ability to use Ansible for installing packages and managing users on a remote server.
+
+You are provided with:
+
+An Ansible control container with terminal access (using ttyd), where you will write and run your Ansible playbook.
+A remote server, server1, which will be configured by your Ansible playbook.
+Pre-configured Setup
+The Ansible inventory file named inventory.ini has been pre-configured in your working directory /home/user/workspace/. It includes server1 with all necessary connection details, prepared for immediate management tasks.
+
+Inventory File Details
+The inventory.ini file is set up with the following connection details for server1:
+
+[all]
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123!
+Server Details
+Hostname: server1
+SSH Username: server1_admin
+SSH Password: server1_admin@123!
+Tasks Description
+Task 1: Install a Package
+
+Objective: Ensure the git package is installed on server1.
+Actions:
+Use an Ansible ad-hoc command to install the git package.
+Confirm that the installation is idempotent, so repeated executions do not affect the state beyond the initial installation.
+Task 2: Create a User
+
+Objective: Create a new user named deploy on server1.
+Actions:
+Use an ad-hoc command to ensure a user named deploy is created with a home directory and /bin/bash as the default shell.
+Make sure the user creation is idempotent, checking if the user already exists before attempting creation.
+
+
+Ans:
+
+ansible -i inventory.ini server1 -m ansible.builtin.apt -a "name=git state=present" -b -K
+ansible -i inventory.ini all -m ansible.builtin.user -a "name=deploy home=/home/deploy shell=/bin/bash state=present" -b -K
+
+
+
