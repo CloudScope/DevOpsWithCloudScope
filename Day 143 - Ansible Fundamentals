@@ -66,12 +66,15 @@ Hostname: server1
 SSH Username: server1_admin
 SSH Password: server1_admin@123!
 Tasks Description
+
 Task 1: Install a Package
 
 Objective: Ensure the git package is installed on server1.
 Actions:
 Use an Ansible ad-hoc command to install the git package.
 Confirm that the installation is idempotent, so repeated executions do not affect the state beyond the initial installation.
+
+
 Task 2: Create a User
 
 Objective: Create a new user named deploy on server1.
@@ -86,4 +89,53 @@ ansible -i inventory.ini server1 -m ansible.builtin.apt -a "name=git state=prese
 ansible -i inventory.ini all -m ansible.builtin.user -a "name=deploy home=/home/deploy shell=/bin/bash state=present" -b -K
 
 
+Q14. File Distribution
+
+Copy a File
+Objective
+The objective of this task is to distribute an existing custom motd (Message of the Day) file from your control node to server1. The MOTD file contains a predefined welcome message that is displayed to users upon login, providing important information or reminders.
+
+Pre-conditions
+An motd file in the workspace directory with a custom welcome message already exists on your control node.
+Your inventory.ini in the workspace directory is configured correctly and includes server1.
+Actions
+Confirm the existence of the motd file:
+Ensure that the motd file is located in a specific directory on your control node, ready for distribution. This file should contain the custom welcome message you intend to share with server users.
+Distribute the motd file
+Use Ansible's copy module to transfer the motd file to the /etc/motd path on server1. This will overwrite any existing MOTD file on the server.
+Verification**
+Verify that the file has been successfully copied and contains the correct message by remotely checking its contents on server1.
+
+ansible server1 -i /home/user/workspace/inventory.ini -m command -a "cat /etc/motd"
+
+Ans:
+
+ansible -i inventory.ini all -m copy -a "src=motd dest=/etc/motd owner=root group=root mode=0644" -b -K
+
+Q15. Ansible Class 1 Assignment 4
+
+Install curl package
+Objective: Verify that the curl package is installed and up to date on server1.
+Pre-conditions
+Your inventory.ini in the workspace directory is configured correctly and includes server1.
+Actions:
+Use an ad-hoc command to check and install the latest version of curl.
+Confirm that the installation or update is done.
+
+Ans:
+ansible -i inventory.ini all -m apt -a "name=curl state=present" -b -K
+
+Q16. Ansible Class 1 Assignment 5
+
+Configure Directory Permissions
+Objective: Set up a directory for web content and adjust its permissions on server1.
+Pre-conditions
+Your inventory.ini in the workspace directory is configured correctly and includes server1.
+Actions:
+Use the shell module to create a directory /var/www/html and ensure it is owned by www-data.
+Verify that the directory has been created with the correct ownership settings and permissions.
+
+Ans:
+
+ansible -i inventory.ini all -m shell -a "mkdir -p /var/www/html && chown www-data:www-data /var/www/html" -b -K
 
