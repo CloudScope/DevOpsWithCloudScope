@@ -134,3 +134,82 @@ server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1
 [allservers:children]
 webservers
 
+
+Q3. Automated Deployment User Creation with Ansible
+
+Assignment Title: Automated Deployment User Creation with Ansible
+Objective:
+The purpose of this assignment is to automate the process of creating a new user called deploy on a remote server using Ansible. This user will be equipped with specific configurations such as a predefined home directory and sudo access without a password. This setup is essential for ensuring that automated tasks and deployments can be managed securely and efficiently.
+
+Assignment Requirements:
+User Creation:
+Automatically create the deploy user across specified managed nodes.
+Home Directory Configuration:
+Assign a custom home directory to the deploy user.
+Sudo Access:
+Configure sudo privileges for the deploy user that do not require a password.
+Resources Provided:
+Access to an Ansible control environment where you can write and run your playbook.
+An inventory file that lists the managed nodes, specifically server1, where the user should be created.
+Task Instructions:
+Step 1: Create the Inventory File
+Develop an inventory.ini file that includes the necessary details to connect to server1. This file should not contain sensitive data directly and should look something like this:
+
+server1 ansible_user=server1_admin ansible_ssh_pass='server1_admin@123!' ansible_become=true ansible_become_pass='server1_admin@123!'
+Step 2: Write the Ansible Playbook
+Create a playbook named playbook.yml with the following specifications:
+
+Header:
+name: Describes what the playbook does, making it clear to anyone reading the YAML file.
+hosts: Specifies which hosts or groups from the inventory the playbook targets, in this case, all indicating all hosts listed in the inventory.
+become: A boolean flag that enables privilege escalation, allowing tasks to run with administrative privileges, which is necessary for user management and file modifications.
+Tasks:
+User Creation:
+user: The Ansible module used for user management.
+name: The username to create, here deploy.
+comment: A brief description of the user account.
+home: Specifies the home directory for the user.
+shell: Sets the default shell for the user.
+create_home: Ensures that the home directory is created if it does not exist.
+groups: Adds the user to specified groups; sudo in this case.
+append: Ensures the user is added to specified groups without removing them from other groups.
+Sudo Privileges Configuration:
+copy: The module used to write a line directly to a file.
+content: The line to be written, granting sudo privileges without a password.
+dest: The destination path for the file being written.
+mode: Sets the permission mode for the file.
+validate: Command to validate the syntax of the file to prevent errors.
+Step 3: Execute the Playbook
+Run the playbook using the command:
+
+ansible-playbook -i inventory.ini playbook.yml
+
+Ans:
+
+vi inventory.ini
+
+[web]
+server1 ansible_user=server1_admin ansible_ssh_pass='server1_admin@123!' ansible_become=true ansible_become_pass='server1_admin@123!'
+
+vi playbook.yaml
+
+- name: Configure all servers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Create deploy user
+      user:
+        name: deploy
+        comment: "Deploy user account"
+        home: /home/deploy
+        shell: /bin/bash
+        create_home: yes
+        groups: sudo
+        append: yes
+
+    - name: Configure sudo privileges for deploy user
+      copy:
+        content: "deploy ALL=(ALL) NOPASSWD:ALL"
+        dest: /etc/sudoers.d/deploy
+        mode: '0440'
+        validate: 'visudo -cf %s'
