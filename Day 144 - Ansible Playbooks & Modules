@@ -1,0 +1,136 @@
+Q1. Nginx Deployment
+
+In this assignment, you will use Ansible to configure a remote server (server1) as a web server. The objective of this task is to help you understand the basics of remote execution with Ansible by configuring server1 to install and manage an Nginx web server.
+
+Assignment Overview
+You are provided with:
+
+An Ansible control container with terminal access (using ttyd) where you will write and run your playbook.
+A remote server, server1, which will be configured by your Ansible playbook.
+Server Details
+Remote Server Hostname: server1
+SSH Username: server1_admin
+SSH Password: server1_admin@123!
+Tasks
+Task 1: Update Inventory File
+Create or update an Ansible inventory file named inventory.ini inside the directory /home/user/workspace/. This inventory file should include server1 with the provided connection details. It will tell Ansible where and how to connect to server1.
+
+Task 2: Update the Playbook
+Create a playbook file named site.yml inside the directory /home/user/workspace/. This playbook should configure server1 as a web server by completing the following tasks:
+
+Install Nginx:
+Task name: "Install Nginx"
+Use the apt module to install the Nginx package.
+Tag this task with nginx.
+Start and Enable Nginx Service:
+Task name: "Start and enable Nginx service"
+Use the service module to start and enable the Nginx service.
+This task should ensure that Nginx starts on boot.
+Tag this task with nginx.
+Create a Custom Welcome Page:
+Task name: "Create welcome page"
+Use the copy module to create a custom welcome page located at /var/www/html/index.html.
+The content of this file should be: "Welcome to Ansible Lab!"
+Tag this task with welcome.
+Task 3: Run the Playbook
+Run the playbook using Ansible to configure server1 as specified. Ensure the playbook executes successfully and performs all tasks.
+
+Command to Run: ansible-playbook -i /home/user/workspace/inventory.ini /home/user/workspace/site.yml
+Task 4: Validation and Submission
+Once the playbook has been executed, verify that:
+
+Nginx is installed and running on server1.
+The custom welcome page exists at /var/www/html/index.html with the correct content.
+Submit your lab once all validations are successful.
+
+Important Notes:
+File Location: Ensure both inventory.ini and site.yml are created within the /home/user/workspace/ directory.
+File Naming: Use exactly inventory.ini for your inventory file and site.yml for your playbook.
+Task Names: Use the exact task names specified for each task (e.g., "Install Nginx", "Start and enable Nginx service", and "Create welcome page").
+Validation Checks: The playbook should run without errors, and Nginx should be installed and running on server1.
+Following this format will ensure that your solution aligns with the validation test cases. Good luck!
+
+
+Ans:
+
+$ vi inventory.ini 
+
+[all]
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123! ansible_become_pass=server1_admin@123!
+
+vi site.yml 
+---
+- name: Configure server1 as a web server
+  hosts: server1
+  become: yes
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+      tags:
+        - nginx
+
+    - name: Start and enable Nginx service
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+      tags:
+        - nginx
+
+    - name: Create welcome page
+      copy:
+        content: "Welcome to Ansible Lab!"
+        dest: /var/www/html/index.html
+        mode: '0644'
+      tags:
+        - welcome
+
+Q2. Node Testing with Ansible
+
+Node Testing with Ansible
+You are provided with:
+
+An Ansible control container with terminal access (using ttyd) where you will write and run your playbook.
+A remote server, server1, which will be configured by your Ansible playbook.
+Server Details
+Remote Server Hostname: server1
+SSH Username: server1_admin
+SSH Password: server1_admin@123!
+Objective
+Demonstrate your understanding of Ansible inventory files, group variables, and host variables.
+
+Instructions
+Inventory File Setup
+Create an inventory directory named inventory/.
+Inside the inventory/ directory, create an inventory file named hosts.ini.
+Define Hosts
+In hosts.ini, define server1 under a group: ini [server] server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123!
+Group Variables
+Inside the inventory/ directory, create a directory named group_vars/.
+Create a YAML file named server.yml inside group_vars/ with the following variables: ansible_user: server1_admin ansible_ssh_pass: server1_admin@123!
+Host Variables
+Inside the inventory/ directory, create a directory named host_vars/.
+Create a YAML file named server1.yml inside host_vars/ with specific variables: yaml http_port: 80
+Test Variables
+Use an ad-hoc command with the debug module to print out the variables http_port on server1.
+Verify that the correct variables are displayed for the host.
+Challenge Task
+Add another group named allservers that includes the server group in the hosts.ini
+Use an ad-hoc command to execute uname -a on all hosts in the allservers group.
+
+
+Ans: 
+
+vi inventory/hosts.ini
+
+[server]
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123!
+
+[webserver]
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123!
+
+[allservers:children]
+webservers
+
