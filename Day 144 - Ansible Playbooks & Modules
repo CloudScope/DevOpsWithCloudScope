@@ -213,3 +213,75 @@ vi playbook.yaml
         dest: /etc/sudoers.d/deploy
         mode: '0440'
         validate: 'visudo -cf %s'
+
+Q4. Managing the Apache Service
+
+Managing the Apache Service
+Develop hosts.ini file that includes the necessary details to connect to server1. This file should not contain sensitive data directly and should look something like this:
+
+server1 ansible_user=server1_admin ansible_ssh_pass='server1_admin@123!' ansible_become=true ansible_become_pass='server1_admin@123!'
+Tasks
+Create a playground.yml and it should configure server1 to operate as an Apache web server.
+
+Install Apache:
+
+Module: Use the apt module to install the Apache package (apache2).
+
+State: Ensure Apache is in the 'present' state, which will install it if it's not already installed.
+
+Tags: Tag this task as apache for easy identification and management.
+
+Start and Enable Apache Service:
+
+Module: Use the service module for managing the Apache service.
+
+Service Name: apache2
+
+State: Ensure the Apache service is 'started'.
+
+Enabled: Set to 'true' to ensure Apache starts on boot.
+
+Tags: This task should also be tagged as apache.
+
+Create a Custom Welcome Page:
+
+Module: Use the copy module to create or replace the content of the welcome page.
+
+Destination: The file should be placed at /var/www/html/index.html.
+
+Content: The welcome page should contain the text "Welcome to Ansible Lab!"
+
+Tags: Tag this task as welcome.
+
+Ans:
+
+vi playground.yml
+
+---
+- name: Configure server1 as an Apache web server
+  hosts: server1
+  become: yes
+  tasks:
+    - name: Install Apache
+      apt:
+        name: apache2
+        state: present
+      tags:
+        - apache
+
+    - name: Start and enable Apache service
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+      tags:
+        - apache
+
+    - name: Create a custom welcome page
+      copy:
+        dest: /var/www/html/index.html
+        content: "Welcome to Ansible Lab!"
+        mode: '0644'
+      tags:
+        - welcome
+
