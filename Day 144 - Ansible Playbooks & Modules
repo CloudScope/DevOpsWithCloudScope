@@ -285,3 +285,49 @@ vi playground.yml
       tags:
         - welcome
 
+Q5. Ansible Class 2 Assignment 5
+
+Package Management Across Environments
+Objective:
+Your team manages multiple servers running different Linux distributions. You need to automate the installation of specific software packages across all the servers. But for now we need to install on server_1
+
+Setup hosts.ini before attempting the task:
+server1 ansible_user=server1_admin ansible_ssh_pass='server1_admin@123!' ansible_become=true ansible_become_pass='server1_admin@123!'
+Instructions:
+Write a playbook that installs curl and git on server1.
+Ensure that the playbook checks whether the packages are already installed and only installs them if necessary.
+The playbook should work regardless of the Linux distribution, using conditionals where appropriate.
+
+Ans:
+
+---
+- name: Install curl and git on server1
+  hosts: server1
+  become: yes
+  tasks:
+    - name: Determine package manager
+      ansible.builtin.set_fact:
+        pkg_mgr: "{{ 'apt' if ansible_os_family == 'Debian' else 'dnf' if ansible_os_family == 'RedHat' else 'yum' }}"
+
+    - name: Install curl and git (Debian-based)
+      apt:
+        name:
+          - curl
+          - git
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      tags:
+        - install
+
+    - name: Install curl and git (RedHat-based)
+      yum:
+        name:
+          - curl
+          - git
+        state: present
+      when: ansible_os_family == "RedHat"
+      tags:
+        - install
+
+$ ansible-playbook -i hosts.ini playboo.yml
