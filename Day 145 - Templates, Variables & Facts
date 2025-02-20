@@ -1,0 +1,44 @@
+
+Q1. Ansible Class 3 Assignment 1
+
+Basic Variable Usage in Playbook
+Objective
+The objective of this assignment is to create a basic Ansible playbook that utilizes variables to personalize a message output. This will help in understanding how variables can be defined and used within playbooks to create dynamic and customizable automation scripts.
+
+Task Description
+You are tasked with writing an Ansible playbook that defines two variables: user_name and user_role. These variables will be used to customize a greeting message which will be printed using Ansible's debug module.
+
+Steps to Complete the Assignment
+Create the Playbook File: Start by creating a new file named greeting_playbook.yml. This file will contain all the necessary configurations for this task.
+
+Define Variables:
+
+Open the playbook file and start by defining a play with a name that indicates its function, such as "Print Customized Greeting Message."
+Specify hosts: localhost to indicate that the playbook should run on the local machine.
+Under the vars section, define the variables user_name and user_role with appropriate values. For instance, user_name: Alice and user_role: Developer.
+Add a Task to Print the Message:
+Add a task that uses the debug module to output a message.
+
+The message should use the variables to say :
+
+"Hello,  user_name. You are a user_role."
+Ensure that the variables are correctly referenced within the message string using Jinja2 templating syntax ({{ user_name }} and {{ user_role }}).
+
+Make sure to redirect the output to output.txt file using the below format:
+
+ansible-playbook /home/user/greeting_playbook.yml > output.txt
+
+Ans:
+
+---
+- name: Print Customized Greeting Message
+  hosts: localhost
+  gather_facts: no
+  vars:
+    user_name: Alice
+    user_role: Developer
+
+  tasks:
+    - name: Print Greeting Message
+      debug:
+        msg: "Hello, {{ user_name }}. You are a {{ user_role }}."
