@@ -1,0 +1,23 @@
+Q1. Basic Encryption
+
+Assignment 1: Basic Encryption
+Objective: Master the fundamentals of creating and managing encrypted files.
+Tasks:
+Create a plaintext file personal_info.yml with the following data:
+name: John Doe
+address: 123 Elm St
+phone: 555-1234
+Encrypt this file using Ansible Vault and set up a password file named vault_password.txt.
+
+Set Vault password as hello@123!
+
+Ans:
+
+$ vi personal_info.yml
+name: John Doe
+address: 123 Elm St
+phone: 555-1234
+
+$ echo "hello@123!" > vault_password.txt
+
+$ ansible-vault encrypt personal_info.yml --vault-password-file vault_password.txt
