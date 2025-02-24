@@ -1,0 +1,340 @@
+Q1. Ansible Class 4 Assignment 1
+
+apache/
+├── defaults/
+│   ├── main.yml
+├── tasks/
+│   ├── main.yml
+├── handlers/
+│   ├── main.yml
+├── templates/
+│   ├── apache2.conf.j2
+├── meta/
+│   ├── main.yml
+├── vars/
+│   ├── main.yml
+├── files/
+├── README.md
+
+# defaults/main.yml
+dependencies: []
+
+# vars/main.yml
+apache_package: apache2
+apache_service: apache2
+
+# tasks/main.yml
+---
+- name: Update APT package cache
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install Apache2
+  apt:
+    name: "{{ apache_package }}"
+    state: present
+  become: yes
+
+- name: Ensure Apache2 is enabled and running
+  service:
+    name: "{{ apache_service }}"
+    state: started
+    enabled: yes
+  become: yes
+
+# handlers/main.yml
+---
+- name: Restart Apache
+  service:
+    name: "{{ apache_service }}"
+    state: restarted
+  become: yes
+
+# meta/main.yml
+---
+dependencies: []
+
+author: Your Name
+license: MIT
+description: An Ansible role to install and configure Apache2 on Ubuntu
+
+# templates/apache2.conf.j2
+# Apache2 configuration template if needed
+
+# README.md
+# Apache Role
+This Ansible role installs and configures Apache2 on Ubuntu-based systems.
+
+# Example Playbook Integration
+---
+- name: Install and Configure Apache on Localhost
+  hosts: localhost
+  become: true
+  roles:
+    - apache
+
+
+$ vi inventory.ini 
+[web_servers]
+localhost ansible_connection=local
+server1 ansible_host=server1 ansible_user=server1_admin ansible_ssh_pass=server1_admin@123! ansible_become_pass=server1_admin@123!
+
+
+
+Q2. Ansible Class 4 Assignment 2
+
+Implement a Role to Add System Users
+Objective
+Develop an Ansible role named add_user that simplifies the process of adding new system users on Linux servers.
+
+Detailed Description
+The add_user role is designed to efficiently add user accounts to Linux systems. It utilizes configurable parameters to streamline the user creation process, making it ideal for setups ranging from new deployments to expanding existing systems.
+
+Key Features
+User Creation: Automatically adds new user accounts with configurable usernames and optional settings for home directories and shells.
+Configurable User Properties: Allows specification of user details like user_name, user_shell, and whether to create a home directory through role variables.
+This setup uses the add_user role to create a user named john_doe with a bash shell and a home directory on all targeted hosts. Adjust the variables as necessary to customize the user account setup.
+
+Ans:
+
+add_user/
+├── defaults/
+│   ├── main.yml
+├── tasks/
+│   ├── main.yml
+├── handlers/
+│   ├── main.yml
+├── meta/
+│   ├── main.yml
+├── vars/
+│   ├── main.yml
+├── README.md
+
+# defaults/main.yml
+user_name: john_doe
+user_shell: /bin/bash
+create_home: yes
+
+# vars/main.yml
+user_name: john_doe
+user_shell: /bin/bash
+create_home: yes
+
+# tasks/main.yml
+---
+- name: Ensure user exists
+  user:
+    name: "{{ user_name }}"
+    shell: "{{ user_shell }}"
+    create_home: "{{ create_home }}"
+  become: yes
+
+# handlers/main.yml
+---
+# No handlers needed for this role
+
+# meta/main.yml
+---
+dependencies: []
+
+author: Your Name
+license: MIT
+description: An Ansible role to create a new system user on Linux
+
+# README.md
+# Add User Role
+This Ansible role simplifies the process of adding new system users on Linux servers.
+
+# Example Playbook Integration
+---
+- name: Create a new user
+  hosts: all
+  become: true
+  roles:
+    - add_user
+
+$ sudo su
+# ansible-playbook playbook.yml
+
+Q4. Ansible Class 4 Assignment 4
+
+MySQL Database Setup Using Roles and Handlers
+Objective
+Create the mysql_setup Ansible role to automate MySQL server installation and configuration on Linux systems. This role manages the entire lifecycle of MySQL databases, from installation and user setup to dynamic configuration updates.
+
+Detailed Description
+The mysql_setup role simplifies MySQL database management by automating:
+
+Installation: Installs MySQL using system package managers, ensuring the database server is set up correctly.
+Configuration Management: Utilizes Ansible handlers to apply and react to configuration changes dynamically, restarting the MySQL service as needed to keep settings updated without manual intervention.
+
+Ans:
+
+mysql_setup/
+├── defaults/
+│   ├── main.yml
+├── tasks/
+│   ├── main.yml
+├── handlers/
+│   ├── main.yml
+├── meta/
+│   ├── main.yml
+├── vars/
+│   ├── main.yml
+├── README.md
+
+# defaults/main.yml
+mysql_root_password: rootpassword
+mysql_databases: []
+mysql_users: []
+
+# vars/main.yml
+mysql_root_password: rootpassword
+mysql_databases: []
+mysql_users: []
+
+# tasks/main.yml
+---
+- name: Update APT package cache
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install MySQL Server
+  apt:
+    name: mysql-server
+    state: present
+  become: yes
+
+- name: Ensure MySQL service is enabled and running
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Set MySQL root password
+  mysql_user:
+    name: root
+    host: localhost
+    password: "{{ mysql_root_password }}"
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  become: yes
+
+- name: Create MySQL databases
+  mysql_db:
+    name: "{{ item.name }}"
+    state: present
+  loop: "{{ mysql_databases }}"
+  become: yes
+
+# handlers/main.yml
+---
+- name: Restart MySQL
+  service:
+    name: mysql
+    state: restarted
+  become: yes
+
+# meta/main.yml
+---
+dependencies: []
+
+author: Your Name
+license: MIT
+description: An Ansible role to install and configure MySQL on Linux servers
+
+# README.md
+# MySQL Setup Role
+This Ansible role automates the installation and configuration of MySQL on Linux systems.
+
+# Example Playbook Integration
+---
+- name: Install and Configure MySQL
+  hosts: localhost
+  become: true
+  roles:
+    - mysql_setup
+
+
+
+Q5. Ansible Class 4 Assignment 5
+
+Task: Develop an Ansible role named nginx_setup that installs and starts the Nginx web server on Ubuntu servers.
+
+Requirements:
+
+The role should ensure that the Nginx package is installed.
+Configure Nginx to start automatically at boot.
+Ensure the service is running once it's installed.
+
+
+Ans:
+
+nginx_setup/
+├── defaults/
+│   ├── main.yml
+├── tasks/
+│   ├── main.yml
+├── handlers/
+│   ├── main.yml
+├── meta/
+│   ├── main.yml
+├── vars/
+│   ├── main.yml
+├── README.md
+
+# defaults/main.yml
+nginx_package: nginx
+
+# vars/main.yml
+nginx_package: nginx
+
+# tasks/main.yml
+---
+- name: Update APT package cache
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install Nginx
+  apt:
+    name: "{{ nginx_package }}"
+    state: present
+  become: yes
+
+- name: Ensure Nginx service is enabled and running
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+  become: yes
+
+# handlers/main.yml
+---
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+  become: yes
+
+# meta/main.yml
+---
+dependencies: []
+
+author: Your Name
+license: MIT
+description: An Ansible role to install and configure Nginx on Ubuntu servers
+
+# README.md
+# Nginx Setup Role
+This Ansible role automates the installation and configuration of Nginx on Ubuntu servers.
+
+# Example Playbook Integration
+---
+- name: Install and Configure Nginx
+  hosts: localhost
+  become: true
+  roles:
+    - nginx_setup
