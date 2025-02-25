@@ -157,6 +157,151 @@ This Ansible role simplifies the process of adding new system users on Linux ser
 $ sudo su
 # ansible-playbook playbook.yml
 
+Q3. Ansible Class 4 Assignment 3
+
+Firewall Configuration with Conditionals
+Objective
+Create an Ansible role named firewall_setup that manages the configuration of the Uncomplicated Firewall (UFW) on Ubuntu servers. This role should dynamically allow or deny services based on a specified variable.
+
+Detailed Description
+This role aims to provide a flexible firewall management system using UFW. It leverages Ansible's capability to use conditionals, ensuring that firewall rules adapt based on the configuration specified in the playbook or external variables.
+
+Key Features
+Conditional Firewall Rules: Based on the boolean value of service_allowed, the role will configure UFW to either allow or deny specific services such as HTTP and SSH.
+Dynamic Rule Application: The role will use Ansible's ufw module to apply firewall rules dynamically, allowing for real-time security adjustments based on environment or security requirements.
+
+Ans:
+
+
+$ sudo apt update -y;sudo apt install tree
+
+$ tree
+
+|-- firewall_playbook.yml
+`-- roles
+    `-- firewall_setup
+        |-- defaults
+        |   `-- main.yml
+        |-- handlers
+        |   `-- main.yml
+        `-- tasks
+            `-- main.yml
+
+$ mkdir -p roles/firewall_setup/{handlers,tasks,defaults}
+
+$ vi firewall_playbook.yml
+
+---
+- name: Apply UFW Firewall Configuration
+  hosts: localhost
+  connection: local
+  become: true
+  roles:
+    - firewall_setup
+
+vi roles/firewall_setup/handlers/main.yml
+---
+- name: Restart UFW
+  ansible.builtin.service:
+    name: ufw
+    state: restarted
+  become: true
+
+$ vi roles/firewall_setup/tasks/main.yml
+---
+- name: Ensure UFW is installed
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+    update_cache: yes
+  become: true
+
+- name: Disable UFW IPv6 if not supported
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: '^IPV6='
+    line: 'IPV6=no'
+  become: true
+
+- name: Enable UFW and set default rules
+  ansible.builtin.command: ufw --force enable
+  become: true
+
+- name: Set default deny policy for incoming traffic
+  ansible.builtin.ufw:
+    direction: incoming
+    policy: deny
+  become: true
+
+- name: Set default allow policy for outgoing traffic
+  ansible.builtin.ufw:
+    direction: outgoing
+    policy: allow
+  become: true
+
+- name: Allow SSH if enabled in variables
+  ansible.builtin.ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+  when: service_allowed.ssh
+  become: true
+
+- name: Deny SSH if not allowed
+  ansible.builtin.ufw:
+    rule: deny
+    name: OpenSSH
+  when: not service_allowed.ssh
+  become: true
+
+- name: Allow HTTP if enabled
+  ansible.builtin.ufw:
+    rule: allow
+    port: "80"
+    proto: tcp
+  when: service_allowed.http
+  become: true
+
+- name: Deny HTTP if not allowed
+  ansible.builtin.ufw:
+    rule: deny
+    port: "80"
+    proto: tcp
+  when: not service_allowed.http
+  become: true
+
+- name: Allow HTTPS if enabled
+  ansible.builtin.ufw:
+    rule: allow
+    port: "443"
+    proto: tcp
+  when: service_allowed.https
+  become: true
+
+- name: Deny HTTPS if not allowed
+  ansible.builtin.ufw:
+    rule: deny
+    port: "443"
+    proto: tcp
+  when: not service_allowed.https
+  become: true
+
+- name: Ensure UFW is enabled and running
+  ansible.builtin.service:
+    name: ufw
+    state: started
+    enabled: yes
+  become: true
+
+$ vi roles/firewall_setup/defaults/main.yml
+---
+service_allowed:
+  ssh: true
+  http: true
+  https: false
+
+$ ansible-playbook firewall_playbook.yml
+
 Q4. Ansible Class 4 Assignment 4
 
 MySQL Database Setup Using Roles and Handlers
