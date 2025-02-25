@@ -167,3 +167,106 @@ class Solution:
             else:
                 low = mid + 1  # Search in the upper half
         return low
+
+
+Q3. Matrix Median
+
+Problem Description
+
+Given a matrix of integers A of size N x M in which each row is sorted.
+
+
+Find and return the overall median of matrix A.
+
+NOTE: No extra memory is allowed.
+
+NOTE: Rows are numbered from top to bottom and columns are numbered from left to right.
+
+
+
+Problem Constraints
+
+1 <= N, M <= 10^5
+
+1 <= N*M <= 10^6
+
+1 <= A[i] <= 10^9
+
+N*M is odd
+
+
+
+Input Format
+
+The first and only argument given is the integer matrix A.
+
+
+
+Output Format
+
+Return the overall median of matrix A.
+
+
+
+Example Input
+
+Input 1:
+
+A = [   [1, 3, 5],
+        [2, 6, 9],
+        [3, 6, 9]   ] 
+Input 2:
+
+A = [   [5, 17, 100]    ]
+
+
+Example Output
+
+Output 1:
+
+ 5 
+Output 2:
+
+ 17
+
+
+Ans:
+
+from bisect import bisect_right
+class Solution:
+    # @param A : list of list of integers
+    # @return an integer
+    def binSearch(self, matrix, min_el, max_el, cntElBeforeMed):
+        start = min_el
+        end = max_el
+        while start < end:
+            mid = start + ((end - start) // 2)
+            cnt = 0
+            for row in matrix:
+                cnt += bisect_right(row, mid)
+            if cnt > cntElBeforeMed:
+                end = mid
+            else:
+                start = mid + 1
+        
+        return start
+    
+    def getMinMax(self, matrix):
+        min_el = float('inf')
+        max_el = float('-inf')
+        for row in matrix:
+            if min_el > row[0]:
+                min_el = row[0]
+            if max_el < row[-1]:
+                max_el = row[-1]
+        
+        return min_el, max_el
+    
+    def findMedian(self, A):
+        matrix = A
+        rn = len(matrix)
+        cn = len(matrix[0])
+        cntElBeforeMed = (rn * cn) // 2
+        min_el, max_el = self.getMinMax(matrix)
+        return self.binSearch(matrix, min_el, max_el, cntElBeforeMed)
+
