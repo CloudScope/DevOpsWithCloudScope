@@ -21,3 +21,53 @@ phone: 555-1234
 $ echo "hello@123!" > vault_password.txt
 
 $ ansible-vault encrypt personal_info.yml --vault-password-file vault_password.txt
+
+
+
+Q4. Ansible Class 5 Assignment 4
+
+Objective: Handle vault passwords dynamically for different environments.
+
+Tasks:
+
+Create two encrypted files, dev_secrets.yml and prod_secrets.yml, each with a separate password and password for dev_secrets.yml is dev@1234 and for prod it is prod@1234. You can add variables inside these files. for dev_secrets.yml:
+Name of variable is db_password and value is developmentPassword
+
+
+for prod_secrets.yml:
+
+Name of variable is db_password db_password and value is productionPassword
+Write a playbook that includes a prompt for the user to specify which environment (development or production) to run tasks for, using the corresponding secrets file.
+Use a conditional statement in the playbook to determine which vault password file to use based on the user's input.
+
+Ans:
+
+ansible-vault create dev_secrets.yml
+ansible-vault create prod_secrets.yml
+echo -n "dev@123!" > dev_vault_password.txt
+echo -n "prod@123!" > prod_vault_password.txt
+
+
+touch deploy.yml
+
+
+---
+- hosts: localhost
+  gather_facts: no
+  vars_prompt:
+    - name: "env"
+      prompt: "Enter the environment (dev or prod)"
+      private: no
+
+  tasks:
+    - name: "Include environment-specific secrets"
+      include_vars:
+        file: "{{ env }}_secrets.yml"
+      vars:
+        ansible_vault_password_file: "{{ env }}_vault_password.txt"
+
+    - name: "Debug output of secrets"
+      debug:
+        var: secret_variable
+
+ansible-playbook deploy.yml –ask-vault-pass
