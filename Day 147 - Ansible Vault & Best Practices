@@ -42,32 +42,44 @@ Use a conditional statement in the playbook to determine which vault password fi
 
 Ans:
 
-ansible-vault create dev_secrets.yml
-ansible-vault create prod_secrets.yml
-echo -n "dev@123!" > dev_vault_password.txt
-echo -n "prod@123!" > prod_vault_password.txt
+# echo "dev@123!" > /home/user/dev_vault_password.txt
+# echo "prod@123!" > /home/user/prod_vault_password.txt
+# chmod 600 /home/user/dev_vault_password.txt /home/user/prod_vault_password.txt
 
 
-touch deploy.yml
+# ansible-vault create dev_secrets.yml --vault-password-file=/home/user/dev_vault_password.txt
+db_password: developmentPassword
+
+# ansible-vault create prod_secrets.yml --vault-password-file=/home/user/prod_vault_password.txt
+db_password: productionPassword
 
 
+vi playbook.yml
 ---
-- hosts: localhost
+- name: Handle dynamic vault passwords
+  hosts: localhost
   gather_facts: no
   vars_prompt:
-    - name: "env"
-      prompt: "Enter the environment (dev or prod)"
+    - name: env_type
+      prompt: "Enter the environment (development/production)"
       private: no
 
   tasks:
-    - name: "Include environment-specific secrets"
-      include_vars:
-        file: "{{ env }}_secrets.yml"
-      vars:
-        ansible_vault_password_file: "{{ env }}_vault_password.txt"
+    - name: Include the correct vault file
+      ansible.builtin.include_vars:
+        file: "{{ 'dev_secrets.yml' if env_type == 'development' else 'prod_secrets.yml' }}"
+      when: env_type in ['development', 'production']
 
-    - name: "Debug output of secrets"
+    - name: Display the database password
       debug:
-        var: secret_variable
+        msg: "Database password is {{ db_password }}"
+      when: env_type in ['development', 'production']
 
-ansible-playbook deploy.yml –ask-vault-pass
+    - name: Fail if the environment is incorrect
+      fail:
+        msg: "Invalid environment specified!"
+      when: env_type not in ['development', 'production']
+
+# ansible-playbook /home/user/playbook.yml --vault-password-file /home/user/dev_vault_password.txt --extra-vars "env_type=development"
+
+# ansible-playbook /home/user/playbook.yml --vault-password-file /home/user/prod_vault_password.txt --extra-vars "env_type=production"
