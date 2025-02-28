@@ -22,7 +22,96 @@ $ echo "hello@123!" > vault_password.txt
 
 $ ansible-vault encrypt personal_info.yml --vault-password-file vault_password.txt
 
+Q3. Ansible Class 5 Assignment 3
 
+Implementing Ansible Vault in an Ansible Role
+Objective:
+Enhance security by integrating Ansible Vault into an Ansible role to manage server configurations securely.
+
+NOTE: Password for vault is vault@123!
+
+Description:
+You will create a role named configure_server using ansible-galaxy to encapsulate server settings. This role will utilize an encrypted file, server_configs.yml, to store sensitive configuration data securely using Ansible Vault. The process involves creating the role, encrypting the configuration file, and then using this encrypted data within a playbook that implements the role.
+
+Tasks:
+Create the configure_server role to organize and manage server configurations.
+
+Encrypt configuration data using Ansible Vault to secure sensitive settings within in server_configs.yml in /home/user/configure_server/vars directory. The admin_user is admin and admin_password is supersecretpassword
+
+Setup task file (tasks/main.yml): Write tasks in this file to utilize the encrypted variables for configuring the server, such as setting up user accounts or adjusting settings based on secure information.
+
+---
+- name: Print encrypted admin password
+  debug:
+    msg: "Encrypted password is: {{ admin_password }}"
+Develop a playbook that uses the configure_server role, ensuring it can decrypt and apply the encrypted configurations during execution.
+
+This is the description and format of playbook file:
+
+hosts: Specifies that the playbook runs on the localhost.
+connection: Uses a local connection type, meaning Ansible will execute this playbook on the local machine without SSH.
+become: Set to no to indicate that privilege escalation is not required.
+roles: Includes the configure_server role you previously created. This role should contain all necessary tasks to configure your server using settings from the encrypted vars file.
+vars_files: Lists the paths to variable files that contain encrypted data. Here, it points to the encrypted server_configs.yml in your role directory. This file should be decrypted at runtime using Ansible Vault.
+To run the playbook use this :
+
+<command-to-run-ansible-playbook> <playbook yaml file name> --vault-password-file /tmp/.vault_pass.txt >> output.txt
+
+Ans:
+
+1. Create the configure_server Role
+
+ansible-galaxy init /home/user/configure_server
+
+2. Create and Encrypt server_configs.yml
+
+cd /home/user/configure_server/vars
+vi server_configs.yml
+admin_user: admin
+admin_password: supersecretpassword
+
+Encrypt the file using Ansible Vault:
+
+# vi vault.txt
+vault@123!
+
+ansible-vault encrypt server_configs.yml --vault-password-file=vault.txt
+
+3. Define Tasks in tasks/main.yml
+
+vi /home/user/configure_server/tasks/main.yml:
+
+---
+- name: Print encrypted admin password
+  debug:
+    msg: "The encrypted variable is {{ admin_password }}"
+
+- name: Create an admin user
+  user:
+    name: "{{ admin_user }}"
+    password: "{{ admin_password | password_hash('sha512') }}"
+    state: present
+
+4. Create the Playbook (configure_server.yml)
+
+vi /home/user/configure_server.yml:
+
+---
+- name: Configure the server using an encrypted role
+  hosts: localhost
+  connection: local
+  become: yes
+
+  roles:
+    - configure_server
+
+  vars_files:
+    - /home/user/configure_server/vars/server_configs.yml
+
+5. Run the Playbook
+
+sudo chown user:user output.txt
+ansible-playbook /home/user/configure_server.yml --vault-password-file vault.txt | tee /home/user/output.txt  ##vault@123!
 
 Q4. Ansible Class 5 Assignment 4
 
