@@ -1,3 +1,87 @@
+Q2. Prometheus Class -2 Assignment-2
+
+Advanced Prometheus Configuration and Dynamic Scraping
+
+Objective:
+Configure Prometheus to dynamically scrape targets and manage labels effectively using relabeling rules.
+
+Setup Requirements:
+
+Services Configuration:
+
+Run Node Exporter on Two Different Ports:
+Service A: Run Node Exporter on port 9100 (e.g., http://localhost:9100).
+Service B: Run Node Exporter on port 9200 (e.g., http://localhost:9200).
+These two services will expose metrics at their respective ports for Prometheus to scrape.
+Label Management via Relabeling:
+
+Add a label service_type to distinguish between the two services:
+service_a for Service A running on port 9100.
+service_b for Service B running on port 9200.
+Dynamic Target Discovery:
+
+Use file-based service discovery in Prometheus to dynamically discover and scrape targets.
+
+Create a targets.json file that specifies the target services for Prometheus to scrape. This file will be placed in the /etc/prometheus directory.
+
+Verification:
+
+Ensure that the label service_type is correctly applied to both services (service_a for port 9100 and service_b for port 9200).
+
+Use the Prometheus UI to confirm that the services are properly discovered and the labels are visible in the targets section.
+
+
+Ans:
+
+$ wget https://github.com/prometheus/node_exporter/releases/download/v1.9.1/node_exporter-1.9.1.linux-amd64.tar.gz
+$ tar xzvf node_exporter-1.9.1.linux-amd64.tar.gz
+$ rm -rf node_exporter-1.9.1.linux-amd64.tar.gz 
+$ nohup ./node_exporter --web.listen-address=":9200" > /dev/null
+$ nohup ./node_exporter --web.listen-address=":9200" > /dev/null &
+
+$ vi /etc/prometheus/targets.json
+[
+  {
+    "targets": ["localhost:9100"],
+    "labels": {
+      "service_type": "service_a"
+    }
+  },
+  {
+    "targets": ["localhost:9200"],
+    "labels": {
+      "service_type": "service_b"
+    }
+  }
+]
+
+$ vi /etc/prometheus/prometheus.yml 
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'node_exporters'
+    file_sd_configs:
+      - files:
+          - /etc/prometheus/targets.json
+
+    relabel_configs:
+      - source_labels: [__meta_filename]
+        action: keep
+        regex: .*
+
+      - source_labels: [__address__]
+        target_label: instance
+
+      - source_labels: [service_type]
+        target_label: service_type
+
+$ systemctl restart prometheus
+$ systemctl status prometheus
+
+
+
+
 Q3. Prometheus Class -2 Assignment-3
 
 Assignment 3: Securing Prometheus and Validating Metrics
