@@ -1,3 +1,86 @@
+Q1. Prometheus Class -2 Assignment-1
+
+Assignment 1: Configuration and Verification of Prometheus for a Sample HTTP Server
+Objective:
+Configure Prometheus to scrape metrics from an existing Python HTTP server (server.py) and ensure that the metrics are correctly displayed in the Prometheus UI.
+
+Prerequisites:
+Python and Prometheus are already installed and running.
+Create a server.py:
+from prometheus_client import start_http_server, Counter, Histogram
+import random
+import time
+
+# Metrics to track.
+REQUESTS = Counter('total_requests', 'Total web requests made')
+ERRORS = Counter('error_count', 'Total web requests errors')
+LATENCY = Histogram('request_duration_seconds', 'Histogram for the duration in seconds.', buckets=(1, 2, 5, 6, 10))
+
+def process_request(t):
+    """Simulates a request processing that takes 't' seconds."""
+    time.sleep(t)
+
+if __name__ == '__main__':
+    # Start up the server to expose the metrics.
+    start_http_server(8000)
+    # Simulate some requests.
+    while True:
+        process_request(random.choice([1, 2, 5, 6, 10]))
+        REQUESTS.inc()
+        if random.choice([0, 1]) == 1:
+            ERRORS.inc()
+        LATENCY.observe(random.choice([1, 2, 5, 6, 10]))
+Install pip and Activate the python environment then run python3 server.py &
+
+Tasks:
+Task 1: Configure Prometheus to Scrape the Python HTTP Server
+Modify the Prometheus configuration to include the Python HTTP server as a target, ensuring Prometheus can collect metrics exposed by the server.
+
+Steps:
+Edit Prometheus Configuration:
+Locate and open the /etc/prometheus/prometheus.yml configuration file in your Prometheus setup.
+
+Add a new scrape job configuration to scrape metrics from the Python HTTP server:
+
+Job name is 'python_http_server'
+scrape interval is 15 seconds
+Target is localhost and port is 8000.
+This configuration sets Prometheus to scrape metrics from localhost:8000 every 15 seconds.
+
+Restart Prometheus:
+Restart Prometheus to apply the new configuration. This can typically be done by restarting the Prometheus service or container.
+Use the following command if Prometheus is running as a service: sudo systemctl restart prometheus
+Task 2: Verify Metrics in Prometheus
+Ensure that Prometheus is successfully scraping metrics from the Python HTTP server and display these metrics in the Prometheus UI.
+
+Steps:
+Verify Scrape Target Status:
+Open the Prometheus web interface.
+Navigate to "Status" > "Targets" to check the scrape status of the python_http_server. Ensure the status is "UP".
+Query and Visualize Metrics:
+Go to the "Graph" tab within the Prometheus UI.
+Enter queries to display metrics such as request_duration_seconds_sum
+Observe the graphs or tables produced by these queries to confirm that metrics are being collected and displayed correctly.
+
+Ans:
+
+# apt install python3.12-venv
+# python3 -m venv venv
+# source venv/bin/activate
+# pip install -m prometheus_client
+# python3 server.py &
+# vi /etc/prometheus/prometheus.yml
+scrape_configs:
+  # Existing jobs...
+
+  - job_name: 'python_http_server'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['localhost:8000']
+
+# systemctl restart prometheus
+
+
 Q2. Prometheus Class -2 Assignment-2
 
 Advanced Prometheus Configuration and Dynamic Scraping
