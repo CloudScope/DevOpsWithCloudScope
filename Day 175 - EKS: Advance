@@ -1,3 +1,336 @@
+Q7. Deploy Stateful application backed by PVC on EKS with both readiness and liveness probes
+
+Problem Description
+You will provision a complete Amazon EKS environment in us-west-2 using only the default VPC, default subnets, and public IP access mode, then deploy a two-container Stateful application backed by a Persistent Volume Claim, with both readiness and liveness probes configured on the NGINX container.
+
+Tasks:
+IAM Roles
+Cluster Role EKSClusterRole for EKS use case EKS - Auto Cluster
+
+Attach managed policies:
+
+AmazonEKSClusterPolicy
+
+AmazonEKSNetworkingPolicy
+
+AmazonEKSBlockStoragePolicy
+
+AmazonEKSComputePolicy
+
+AmazonEKSLoadBalancingPolicy
+
+Node Role EKSNodeRole for EC2
+
+Attach managed policies:
+
+AmazonEC2ContainerRegistryPullOnly
+
+AmazonEC2ContainerRegistryReadOnly
+
+AmazonEKS_CNI_Policy
+
+AmazonEKSWorkerNodePolicy
+
+EKS Cluster Creation
+Mode: Manual Configuration
+
+Name: lab-eks-<ACCOUNT_ID>
+
+VPC: Default VPC, default subnets
+
+Cluster endpoint access: Public
+
+Add-ons: Amazon VPC CNI and kube-proxy
+
+Managed Node Group
+Name: lab-ng-<ACCOUNT_ID>
+
+Cluster: lab-eks-<ACCOUNT_ID>
+
+IAM role: EKSNodeRole
+
+Instance type: t3.micro and on-demand
+
+Scaling: Min = 1, Desired = 2, Max = 3
+
+Subnets: default
+
+Configure kubectl
+Before running anything first do sudo su and put password user@123! and then run the commands:
+
+aws eks update-kubeconfig --region us-west-2 --name lab-eks-<ACCOUNT_ID>
+Create & Deploy Storage
+Write PersistentVolume nfs-pv.yaml:
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data
+Apply:
+kubectl apply -f nfs-pv.yaml
+Write PersistentVolumeClaim nfs-pvc.yaml:
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+Apply:
+kubectl apply -f nfs-pvc.yaml
+Create & Deploy App
+Write stateful-app.yaml:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stateful-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stateful-app
+  template:
+    metadata:
+      labels:
+        app: stateful-app
+    spec:
+      containers:
+      - name: log-writer
+        image: busybox
+        command: ["sh","-c","while true; do echo $(date) >> /data/log.txt; sleep 5; done"]
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      - name: nginx
+        image: nginx:alpine
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/nginx/html
+        readinessProbe:
+          httpGet:
+            path: /log.txt
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /log.txt
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: nfs-pvc
+Apply:
+kubectl apply -f stateful-app.yaml
+Write stateful-service.yaml:
+apiVersion: v1
+kind: Service
+metadata:
+  name: stateful-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: stateful-app
+  ports:
+  - port: 80
+    targetPort: 80
+Apply:
+kubectl apply -f stateful-service.yaml
+Check the service and get the external IP:
+kubectl get svc stateful-service
+Once the LoadBalancer EXTERNAL-IP is ready, you can verify by browsing or:
+curl http://<EXTERNAL-IP>/log.txt
+
+Ans:
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text)
+SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[].SubnetId" --output text --region $REGION | sed 's/[[:space:]]/,/g')
+SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output text)
+
+# 1. Create the IAM role with trust policy including sts:TagSession
+aws iam create-role \
+  --role-name EKSClusterRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "eks.amazonaws.com"
+        },
+        "Action": [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+      }
+    ]
+  }'
+
+# Attach managed policies
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSNetworkingPolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSBlockStoragePolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSComputePolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSLoadBalancingPolicy
+
+
+# 2. Create the IAM role
+aws iam create-role \
+  --role-name EKSNodeRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "ec2.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }'
+
+# Attach managed policies
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+
+aws eks create-cluster --region $REGION --name lab-eks-${ACCOUNT_ID} --role-arn arn:aws:iam::${ACCOUNT_ID}:role/EKSClusterRole --resources-vpc-config subnetIds=[$SUBNET_IDS],endpointPublicAccess=true,endpointPrivateAccess=false --kubernetes-version 1.33
+aws eks wait cluster-active --region $REGION --name lab-eks-${ACCOUNT_ID}
+
+# 4. Install add-ons
+aws eks create-addon --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --addon-name vpc-cni
+aws eks create-addon --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --addon-name kube-proxy
+
+# 5. Create node group
+
+aws eks create-nodegroup \
+  --region $REGION \
+  --cluster-name lab-eks-${ACCOUNT_ID} \
+  --nodegroup-name lab-ng-${ACCOUNT_ID} \
+  --node-role arn:aws:iam::${ACCOUNT_ID}:role/EKSNodeRole \
+  --subnets $SUBNETS \
+  --instance-types t3.micro \
+  --scaling-config minSize=1,desiredSize=2,maxSize=3
+
+aws eks wait nodegroup-active --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --nodegroup-name lab-ng-${ACCOUNT_ID}
+
+aws eks update-kubeconfig --region us-west-2 --name lab-eks-${ACCOUNT_ID}
+cat<<EOF > nfs-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /mnt/data
+EOF
+
+cat<<EOF > nfs-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+cat<<EOF > stateful-app.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stateful-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stateful-app
+  template:
+    metadata:
+      labels:
+        app: stateful-app
+    spec:
+      containers:
+      - name: log-writer
+        image: busybox
+        command: ["sh","-c","while true; do echo $(date) >> /data/log.txt; sleep 5; done"]
+        volumeMounts:
+        - name: data
+          mountPath: /data
+      - name: nginx
+        image: nginx:alpine
+        volumeMounts:
+        - name: data
+          mountPath: /usr/share/nginx/html
+        readinessProbe:
+          httpGet:
+            path: /log.txt
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /log.txt
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: nfs-pvc
+EOF
+
+cat<<EOF > stateful-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: stateful-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: stateful-app
+  ports:
+  - port: 80
+    targetPort: 80
+
+EOF
+
+kubectl apply -f nfs-pv.yaml
+kubectl apply -f nfs-pvc.yaml
+kubectl apply -f stateful-app.yaml
+kubectl apply -f stateful-service.yaml
+kubectl get svc stateful-service
+
+
+
+
+
+
+
 Q8. Deploy Flask + SQLite Application Stack on EKS
 
 Problem Description
