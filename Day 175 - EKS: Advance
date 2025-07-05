@@ -1,0 +1,377 @@
+Q8. Deploy Flask + SQLite Application Stack on EKS
+
+Problem Description
+You will provision a complete Amazon EKS environment in us-west-2 (default VPC, default subnets, public access), then deploy a stateful SQLite database alongside a Python Flask application. The Flask app will expose two HTTP endpoints: one to write a record into the database, and one to read it back.
+
+Tasks
+ECR Setup & Image Push
+Create a Private ECR repository named lab-repo-<ACCOUNT_ID>-flask in us-west-2.
+
+* Build and push a Docker image containing Python Flask app with 2 endpoints in the CLI with this content and password is user@123! for root user:
+
+Dockerfile and Flask app:
+
+sudo vi app.py
+
+app.py:
+
+from flask import Flask, request, jsonify
+import sqlite3
+import os
+
+app = Flask(__name__)
+DB_PATH = 'kv.db'
+
+# Ensure the table exists
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS kv (
+                store_key INTEGER PRIMARY KEY,
+                store_val TEXT
+            )
+        ''')
+        conn.commit()
+
+@app.route("/write", methods=["POST"])
+def write():
+    data = request.json.get("value")
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO kv(store_key, store_val)
+            VALUES (1, ?)
+            ON CONFLICT(store_key) DO UPDATE SET store_val=excluded.store_val
+        ''', (data,))
+        conn.commit()
+    return jsonify(status="ok"), 201
+
+@app.route("/read")
+def read():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT store_val FROM kv WHERE store_key=1;")
+        row = cur.fetchone()
+        return jsonify(value=row[0] if row else None)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000)
+sudo vi Dockerfile
+Dockerfile:
+
+FROM python:3.9-slim
+WORKDIR /app
+COPY app.py .
+RUN pip install flask
+CMD ["python", "app.py"]
+Authenticate Docker to ECR as root (using sudo, password user@123!):
+
+aws ecr get-login-password --region us-west-2 \
+  | sudo docker login --username AWS --password-stdin {ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
+Build the image with sudo:
+
+sudo docker build -t lab-repo-<ACCOUNT_ID>-flask .
+Tag the image with sudo:
+
+sudo docker tag lab-repo-<ACCOUNT_ID>-flask:latest <Account-ID>.dkr.ecr.us-west-2.amazonaws.com/lab-repo-<ACCOUNT_ID>-flask:latest
+Push the image with sudo:
+
+sudo docker push <Account-ID>.dkr.ecr.us-west-2.amazonaws.com/lab-repo-<ACCOUNT_ID>-flask:latest
+IAM Roles
+Cluster Role EKSClusterRole for EKS use case EKS - Auto Cluster
+
+Attach managed policies:
+
+AmazonEKSClusterPolicy
+
+AmazonEKSNetworkingPolicy
+
+AmazonEKSBlockStoragePolicy
+
+AmazonEKSComputePolicy
+
+AmazonEKSLoadBalancingPolicy
+
+Node Role EKSNodeRole for EC2
+
+Attach managed policies:
+
+AmazonEC2ContainerRegistryPullOnly
+
+AmazonEC2ContainerRegistryReadOnly
+
+AmazonEKS_CNI_Policy
+
+AmazonEKSWorkerNodePolicy
+
+EKS Cluster Creation
+Mode: Manual Configuration
+
+Name: lab-eks-<ACCOUNT_ID>
+
+VPC: Default VPC, default subnets
+
+Cluster endpoint access: Public
+
+Add-ons: Amazon VPC CNI and kube-proxy
+
+Managed Node Group
+Name: lab-ng-<ACCOUNT_ID>
+
+Cluster: lab-eks-<ACCOUNT_ID>
+
+IAM role: EKSNodeRole
+
+Instance type: t3.micro and on-demand
+
+Scaling: Min = 1, Desired = 2, Max = 3
+
+Subnets: default
+
+Install and Configure kubectl
+Before running anything first do sudo su and put password user@123! and then run the commands as root:
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+export PATH=$PATH:/usr/local/bin
+aws eks update-kubeconfig --region us-west-2 --name lab-eks-<ACCOUNT_ID>
+Create & Deploy Flask Application:
+Write Deployment flask-deployment.yaml and remember to replace the Image URL in the yaml file:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+      - name: flask
+        image: <ACCOUNT_ID>.dkr.ecr.us-west-2.amazonaws.com/lab-repo-<ACCOUNT_ID>-flask:latest
+        ports:
+        - containerPort: 5000
+Apply:
+kubectl apply -f flask-deployment.yaml
+Write Service flask-service.yaml:
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: flask
+Apply:
+kubectl apply -f flask-service.yaml
+Verify Endpoints:
+Get LoadBalancer address:
+kubectl get svc flask
+Write data:
+curl -X POST http://<FLASK-LB>/write -H "Content-Type: application/json" -d '{"value":"hello"}'
+Read data:
+curl http://<FLASK-LB>/read
+Should return {"value":"hello"}
+
+Proceed with Submission only after wrting data into the the DB, otherwise test case will fail
+
+Ans:
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION="us-west-2"
+VPC_ID=$(aws ec2 describe-vpcs --filters "Name=is-default,Values=true" --query "Vpcs[0].VpcId" --output text)
+SUBNET_IDS=$(aws ec2 describe-subnets --filters "Name=default-for-az,Values=true" --query "Subnets[].SubnetId" --output text --region $REGION | sed 's/[[:space:]]/,/g')
+SUBNETS=$(aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" --query "Subnets[*].SubnetId" --output text)
+aws ecr create-repository --repository-name lab-repo-$ACCOUNT_ID-flask --region $REGION
+
+cat<<EOF > app.py
+from flask import Flask, request, jsonify
+import sqlite3
+import os
+
+app = Flask(__name__)
+DB_PATH = 'kv.db'
+
+# Ensure the table exists
+def init_db():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS kv (
+                store_key INTEGER PRIMARY KEY,
+                store_val TEXT
+            )
+        ''')
+        conn.commit()
+
+@app.route("/write", methods=["POST"])
+def write():
+    data = request.json.get("value")
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute('''
+            INSERT INTO kv(store_key, store_val)
+            VALUES (1, ?)
+            ON CONFLICT(store_key) DO UPDATE SET store_val=excluded.store_val
+        ''', (data,))
+        conn.commit()
+    return jsonify(status="ok"), 201
+
+@app.route("/read")
+def read():
+    with sqlite3.connect(DB_PATH) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT store_val FROM kv WHERE store_key=1;")
+        row = cur.fetchone()
+        return jsonify(value=row[0] if row else None)
+
+if __name__ == "__main__":
+    init_db()
+    app.run(host="0.0.0.0", port=5000)
+EOF
+
+cat<<EOF > Dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY app.py .
+RUN pip install flask
+CMD ["python", "app.py"]
+
+EOF
+
+aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com
+
+docker build -t lab-repo-$ACCOUNT_ID-flask .
+
+docker tag lab-repo-$ACCOUNT_ID-flask:latest ${ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/lab-repo-$ACCOUNT_ID-flask:latest
+
+docker push ${ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/lab-repo-$ACCOUNT_ID-flask:latest
+
+# 1. Create the IAM role with trust policy including sts:TagSession
+aws iam create-role \
+  --role-name EKSClusterRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "eks.amazonaws.com"
+        },
+        "Action": [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+      }
+    ]
+  }'
+
+# Attach managed policies
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSNetworkingPolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSBlockStoragePolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSComputePolicy
+aws iam attach-role-policy --role-name EKSClusterRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSLoadBalancingPolicy
+
+
+# 2. Create the IAM role
+aws iam create-role \
+  --role-name EKSNodeRole \
+  --assume-role-policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Service": "ec2.amazonaws.com"
+        },
+        "Action": "sts:AssumeRole"
+      }
+    ]
+  }'
+
+# Attach managed policies
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+aws iam attach-role-policy --role-name EKSNodeRole --policy-arn arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+
+aws eks create-cluster --region $REGION --name lab-eks-${ACCOUNT_ID} --role-arn arn:aws:iam::${ACCOUNT_ID}:role/EKSClusterRole --resources-vpc-config subnetIds=[$SUBNET_IDS],endpointPublicAccess=true,endpointPrivateAccess=false --kubernetes-version 1.33
+aws eks wait cluster-active --region $REGION --name lab-eks-${ACCOUNT_ID}
+
+# 4. Install add-ons
+aws eks create-addon --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --addon-name vpc-cni
+aws eks create-addon --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --addon-name kube-proxy
+
+# 5. Create node group
+
+aws eks create-nodegroup \
+  --region $REGION \
+  --cluster-name lab-eks-${ACCOUNT_ID} \
+  --nodegroup-name lab-ng-${ACCOUNT_ID} \
+  --node-role arn:aws:iam::${ACCOUNT_ID}:role/EKSNodeRole \
+  --subnets $SUBNETS \
+  --instance-types t3.micro \
+  --scaling-config minSize=1,desiredSize=2,maxSize=3
+
+aws eks wait nodegroup-active --region $REGION --cluster-name lab-eks-${ACCOUNT_ID} --nodegroup-name lab-ng-${ACCOUNT_ID}
+
+aws eks update-kubeconfig --region us-west-2 --name lab-eks-${ACCOUNT_ID}
+
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+export PATH=$PATH:/usr/local/bin
+
+cat<<EOF > flask-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+      - name: flask
+        image: ${ACCOUNT_ID}.dkr.ecr.us-west-2.amazonaws.com/lab-repo-$ACCOUNT_ID-flask:latest
+        ports:
+        - containerPort: 5000
+EOF
+
+cat<<EOF > flask-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: flask
+EOF
+
+kubectl apply -f flask-deployment.yaml
+kubectl apply -f flask-service.yaml
+kubectl get svc flask
+curl -X POST http://a62a4bf5ea8f644009cae897b16c2091-1074503116.us-west-2.elb.amazonaws.com/write -H "Content-Type: application/json" -d '{"value":"hello"}'
+curl http://a62a4bf5ea8f644009cae897b16c2091-1074503116.us-west-2.elb.amazonaws.com/read
+
+
