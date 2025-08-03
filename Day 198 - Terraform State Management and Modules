@@ -1,0 +1,266 @@
+Q1. Deploy and Trigger AWS Lambda Function Using Terraform
+
+Lab Description: Deploying an AWS Lambda Function with Terraform
+In this lab, your task is to deploy a standalone AWS Lambda function using Terraform. You will write a simple Python function, zip it, and deploy it using Terraform configuration files. You'll also define an IAM role with basic Lambda execution permissions.
+
+Your Objectives:
+To successfully complete the lab and pass all test cases, you must ensure the following:
+
+Terraform is properly initialized.
+
+The Lambda function is deployed in the us-west-2 region.
+
+An IAM role named lambda_exec is created and correctly attached.
+
+Your Lambda source is zipped, and its integrity is validated using source_code_hash.
+
+What You’ll Do in Each File:
+main.tf :
+Define the AWS provider and explicitly set the region to us-west-2.
+
+Create an IAM role with the name lambda_exec. This role should allow AWS Lambda to assume it — think about the required trust relationship in assume_role_policy.
+
+Define a Lambda function resource named hello_lambda:
+
+Use a variable for the function name (avoid hardcoding).
+
+Reference the zipped filename using a variable.
+
+Set the runtime to python3.12.
+
+Use lambda_function.handler as the handler.
+
+Set the role ARN using the IAM role you just defined.
+
+Make sure to include source_code_hash — this ensures Terraform recognizes changes in the zip file.
+
+You can omit code signing config or set it to null, as it’s not needed here.
+
+variables.tf :
+Define a variable for the Lambda function name, with a default like "HelloLambda" (or similar).
+
+Define a variable for the zip filename, which will point to the zipped Lambda function source (e.g., "lambda.zip").
+
+outputs.tf :
+Add an output that displays the Lambda function name after deployment, by referencing the relevant attribute from the Lambda resource.
+What Else to Do :
+Before running Terraform commands, you must:
+
+Create a simple Python function in a file using the terminal (lambda_function.py) with a handler function.
+def handler(event, context):
+    return{"statusCode": 200, "body": "Hello from Lambda"}
+Zip this file into lambda.zip using zip command.
+Commands to Run:
+terraform init
+terraform plan -out=tfplan.binary
+sudo bash generate_plan_json.sh
+terraform apply tfplan.binary
+Password for sudo: user@123!
+Note: You may see an AccessDenied error related to GetFunctionCodeSigningConfig. You can safely ignore this — it's not part of your task and does not affect the test cases or resource creation.
+
+Ensure:
+
+Region is set to us-west-2
+
+Lambda function hello_lambda exists
+
+IAM Role lambda_exec is present
+
+source_code_hash is correctly defined
+
+
+Ans:
+
+
+1. Write your lambda function:
+sudo vim lambda_function.py
+
+Add:
+
+ def handler(event, context):
+     return {"statusCode": 200, "body": "Hello from Lambda"}
+
+2. Zip the function:
+zip lambda.zip lambda_function.py
+
+# 3. Initialize Terraform:
+
+terraform init
+
+# 4. Create Terraform plan:
+
+terraform plan -refresh=false -out=tfplan.binary
+
+# 5. Generate the JSON plan file for test scripts:
+
+sudo bash generate_plan_json.sh
+
+# 6. Apply Lambda resource only:
+
+terraform apply -target=aws_lambda_function.hello_lambda -auto-approve
+#main.tf:
+
+
+provider "aws" {
+  region = "us-west-2"
+}
+
+resource "aws_iam_role" "lambda_exec" {
+  name = "lambda_exec"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "hello_lambda" {
+  function_name = var.lambda_function_name
+  role          = aws_iam_role.lambda_exec.arn
+  handler       = "lambda_function.handler"
+  runtime       = "python3.12"
+
+  filename         = var.lambda_filename
+  source_code_hash = filebase64sha256(var.lambda_filename)
+
+  code_signing_config_arn = null
+}
+#variables.tf:
+
+variable "lambda_function_name" {
+  default = "HelloLambda"
+}
+
+variable "lambda_filename" {
+  default = "lambda.zip"
+}
+#outputs.tf:
+
+output "lambda_function_name" {
+  value = aws_lambda_function.hello_lambda.function_name
+}
+
+
+
+Q2. S3 Lifecycle Rules with Complex Nested Blocks
+
+You are tasked with automating the creation of an Amazon S3 bucket that enforces complex lifecycle rules using Terraform. These lifecycle rules will help optimize storage costs by transitioning data to cheaper storage classes and ultimately expiring them.
+
+Objectives:
+You must configure Terraform to:
+
+Use the AWS provider, with the region set to us-west-2.
+
+Create a uniquely named S3 bucket:
+
+The name should start with "lifecycle-managed-bucket-".
+
+A random suffix should be appended to the name for uniqueness.
+
+Define lifecycle configuration for the bucket using properly nested blocks. Your configuration should:
+
+Transition objects to STANDARD_IA storage class after 30 days.
+
+Transition objects to GLACIER after 90 days.
+
+Remember: Terraform requires a filter block even if you're applying rules to all objects.
+
+What You Must Implement in main.tf:
+AWS Provider Block: Declare the AWS provider and specify the correct region.
+
+Random Suffix Generation: Use a Terraform resource to generate a unique suffix for the bucket.
+
+S3 Bucket Resource:
+
+Name must include the fixed prefix and the random suffix.
+
+It should not be forcefully destroyed on deletion.
+
+Lifecycle Configuration:
+
+Use a dedicated resource for the bucket lifecycle configuration.
+
+Inside the rule block:
+
+Add an empty filter block to apply the rules globally.
+
+Add two transition blocks, each with the specified days and storage classes.
+
+Ensure you use proper nesting and indentation as required by Terraform syntax.
+
+Commands to Run:
+terraform init
+terraform plan -out=tfplan.binary
+sudo bash generate_plan_json.sh
+terraform apply tfplan.binary
+Password for sudo: user@123!
+The generate_plan_json.sh is used in the judge environment to validate your configuration using a JSON-formatted Terraform plan.
+Ensure:
+AWS provider is used with region us-west-2.
+
+S3 bucket name follows the required naming convention with random suffix.
+
+Objects transition to STANDARD_IA after 30 days.
+
+Objects transition to GLACIER after 90 days.
+
+
+
+Ans:
+
+# Initialize Terraform
+terraform init
+
+# Generate and save a plan
+terraform plan -out=tfplan.binary
+
+# Convert plan to JSON for test cases
+sudo bash generate_plan_json.sh
+
+# Apply the plan
+terraform apply tfplan.binary
+#main.tf :
+
+provider "aws" {
+  region = "us-west-2"
+}
+
+resource "random_id" "suffix" {
+  byte_length = 3
+}
+
+resource "aws_s3_bucket" "lifecycle_bucket" {
+  bucket = "lifecycle-managed-bucket-${random_id.suffix.hex}"
+  force_destroy = false
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "lifecycle_config" {
+  bucket = aws_s3_bucket.lifecycle_bucket.id
+  rule {
+    id     = "lifecycle-rule"
+    status = "Enabled"
+
+    filter {} # required even if empty
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+  }
+}
+
+
+
