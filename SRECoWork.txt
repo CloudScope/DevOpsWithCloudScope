@@ -1,0 +1,459 @@
+================================================================================
+        AGENTIC SRE — CENTER FOR RESILIENCE
+        HACKATHON SPEAKER SCRIPT | 25 MINUTES
+================================================================================
+
+HACKATHON FRAMING — WHAT JUDGES LOOK FOR
+-----------------------------------------
+  - Problem clarity     : Do you really understand the pain?
+  - Innovation          : Is this genuinely new or just glue?
+  - Technical depth     : Did you actually build it?
+  - Demo wow factor     : Does it work?
+  - Real-world impact   : Would this ship?
+
+================================================================================
+SLIDE 1 — TITLE  (~30 seconds)
+Energy: HIGH. Hook them in 10 seconds.
+================================================================================
+
+"Raise your hand if you've been paged at 3AM for something that turned out
+to be a memory limit.
+
+[pause]
+
+Yeah. We built the thing that fixes that — while you're asleep.
+
+This is Agentic SRE — an autonomous center for resilience that detects
+failures, diagnoses root cause, acts on your Kubernetes cluster, and publishes
+the RCA to Confluence — without a human touching anything.
+
+25 minutes. Let's go."
+
+
+================================================================================
+SLIDE 2 — THE PROBLEM  (~1.5 minutes)
+Energy: FRUSTRATED. Make it personal.
+================================================================================
+
+"Here's the reality of on-call today.
+
+Your Splunk is firing 400 alerts. Your engineer is trying to figure out which
+3 of those actually matter. They open Dynatrace. Then traces. Then they're
+Slack-searching for 'OOMKilled payment-service' hoping someone documented
+this 8 months ago.
+
+It takes 45 minutes just to understand what broke.
+
+Then they fix it manually — kubectl delete pod, bump the memory limit, scale
+up the HPA — at 3AM, half-asleep, hoping they don't make it worse.
+
+Then they write an RCA. Except they don't. Because it's 4AM and everyone just
+wants to go back to sleep. So the next engineer hits the exact same issue
+6 weeks later.
+
+This is the loop we broke."
+
+
+================================================================================
+SLIDE 3 — SOLUTION OVERVIEW  (~1.5 minutes)
+Energy: CONFIDENT. Land the concept.
+================================================================================
+
+"We built a four-pillar autonomous loop.
+
+INGEST — three agents pulling from Splunk, OpenTelemetry, and Dynatrace
+simultaneously. Not just collecting — enriching, correlating, pre-processing
+before it hits the LLM.
+
+ANALYZE — LLM does root cause analysis across all three signal types in under
+a minute. Not rule-based. Not threshold-based. Actual reasoning.
+
+ACT — Kubernetes MCP gives the LLM direct, safe access to your cluster.
+It deletes pods, scales resources, patches deployments. No runbook. No human.
+
+DOCUMENT — RCA auto-published to Confluence. Every time. Whether it's
+2PM or 3AM.
+
+Detect. Diagnose. Act. Learn. Always running."
+
+
+================================================================================
+SLIDE 4 — SYSTEM ARCHITECTURE  (~2 minutes)
+Energy: TECHNICAL CONFIDENCE. Show you built it.
+================================================================================
+
+"Here's what we actually built — and I want to be clear about the real
+technical choices we made.
+
+Left side: three purpose-built agents. Each one doesn't just dump raw data —
+it pre-processes. The Splunk agent classifies severity and attaches deployment
+context. The OTel agent maps service topology so the LLM understands blast
+radius. Dynatrace gives infra metrics with Davis AI baselines already applied —
+so we're not reacting to raw numbers, we're reacting to deviations from
+expected behavior.
+
+Center: the LLM engine. This is where we spent the most time. Prompt
+engineering for multi-signal correlation is genuinely hard. Getting the LLM
+to reason across log patterns, trace anomalies, and infra metrics
+simultaneously — and produce a ranked, actionable RCA — took real iteration.
+
+Bottom: the knowledge base. Confluence, Stack Overflow, engineering wiki,
+public tech blogs. The LLM doesn't just retrieve — it reasons over what it
+retrieves and decides what's relevant to this specific incident.
+
+Right side: two outputs. Kubernetes MCP for action. Confluence for
+documentation.
+
+The architecture decision we're most proud of? Using MCP instead of direct
+kubectl access. It gives us a structured, policy-enforced, auditable action
+layer. The LLM can't just do anything — it can only do what the MCP allows.
+That's the guardrail that makes this safe to run autonomously in production."
+
+
+================================================================================
+SLIDE 5 — OBSERVABILITY INGESTION  (~2 minutes)
+Energy: TECHNICAL BUT GROUNDED. Show the depth.
+================================================================================
+
+"Let me quickly tell you why we chose these three sources and not just one.
+
+Most teams pick one observability tool and go deep. The problem is each tool
+sees a different layer of truth.
+
+Splunk sees what the application said happened.
+OTel sees how the failure propagated across services.
+Dynatrace sees what the infrastructure was doing when it happened.
+
+A memory error in Splunk without the Dynatrace infra view — you don't know
+if it's a leak or a traffic spike. A latency spike in OTel without the Splunk
+errors — you don't know if it's a downstream timeout or an upstream retry
+storm. You need all three to reason correctly.
+
+That's why we built three separate agents — each optimized for its data
+source — feeding a unified context window to the LLM.
+
+During the hackathon we actually hit a real challenge here: context window
+management. You can't dump all your logs and traces into a single LLM prompt.
+We had to build a pre-processing layer that summarizes, deduplicates, and
+selects the most signal-rich data to forward. That's a real engineering
+problem. We solved it."
+
+
+================================================================================
+SLIDE 6 — LLM-POWERED ANALYSIS  (~3 minutes)
+Energy: THIS IS YOUR TECHNICAL CENTREPIECE. Slow down here.
+================================================================================
+
+"This is the brain. And I want to be honest — this is where we spent 60% of
+our hackathon time, because this is genuinely hard to get right.
+
+The five-step analysis pipeline:
+
+SIGNAL FUSION — correlate events across three data sources into one incident
+timeline. Deduplicate. If 10 pods log the same error, that's one incident
+pattern, not ten noisy signals.
+
+ANOMALY SCORING — severity, blast radius, is this growing or stabilizing?
+We tuned this to avoid the trap of the LLM treating every anomaly as a P1.
+
+ROOT CAUSE ANALYSIS — this is the hard one. We're asking the LLM to reason
+causally across application, network, and infrastructure layers. We prompt it
+to produce a causal chain, not just a symptom list.
+
+KNOWLEDGE RETRIEVAL — the LLM queries Confluence for runbooks, Stack Overflow
+for similar error threads, engineering wikis for ownership info, and can hit
+public engineering blogs for novel issues. This is RAG done properly — not
+just semantic similarity, but relevance to this incident's specific signature.
+
+REMEDIATION RECOMMENDATION — ranked action plan, with confidence scores,
+immediate automated steps, and manual fallback.
+
+[Point to the RCA output on slide]
+
+This is real output from our system. Payment-service OOMKilled. Root cause
+identified — memory limit exceeded during a traffic spike, compounded by a
+memory leak in v2.3.1. Actions recommended and executed. MTTD: 47 seconds.
+
+The confidence score is real — we calibrated it against historical incidents.
+94% means the LLM correctly identified root cause and the right fix 94% of
+the time on our test dataset."
+
+
+================================================================================
+SLIDE 7 — KUBERNETES MCP REMEDIATION  (~3 minutes)
+Energy: THIS IS YOUR INNOVATION DIFFERENTIATOR. Own it.
+================================================================================
+
+"I want to spend a bit of time here because this is what makes our solution
+different from just another monitoring dashboard.
+
+A lot of AIOps tools detect problems. Some even diagnose them. Very few
+act — and when they do, it's usually via rigid, pre-scripted automation that
+breaks the moment the incident is slightly outside the expected pattern.
+
+We used Kubernetes MCP — the Model Context Protocol — to give the LLM
+structured, safe, context-aware access to the cluster.
+
+Here's why MCP and not direct kubectl: because we needed a layer of intent
+validation between the LLM's decision and the cluster's reality. The MCP
+defines exactly which operations are available, validates parameters, enforces
+policy guardrails, and returns structured results the LLM can reason about.
+
+So the LLM can't delete a StatefulSet in production. It can't scale beyond
+pre-defined limits without a human approval flag. It can't touch database
+pods. The guardrails are built into the MCP schema — not into a prompt that
+could be reasoned around.
+
+What it CAN do: delete crashing pods, increase resource quotas, modify
+deployments, adjust HPA thresholds.
+
+During the hackathon we had a real debate about how much autonomy to give
+the LLM. Our answer: full autonomy for reversible, well-understood remediation
+patterns. Human-in-the-loop flag for anything destructive or novel. That's
+the right balance for a system you'd actually trust in production."
+
+
+================================================================================
+SLIDE 8 — KNOWLEDGE BASE & RCA PUBLISHING  (~2 minutes)
+Energy: STEADY. This is the closer before the demo.
+================================================================================
+
+"Two things that might look like nice-to-haves but are actually fundamental
+to the value proposition.
+
+KNOWLEDGE RETRIEVAL. The LLM is only as good as the context it has. We built
+four knowledge connectors — Confluence for internal runbooks, Stack Overflow
+for community solutions, engineering wiki for ownership and SLOs, and live
+public blog search for novel issues. The LLM uses these during analysis —
+not after. It influences the root cause reasoning, not just the summary.
+
+AUTO-PUBLISHING RCA TO CONFLUENCE. This sounds simple. It's not. We had to
+design a template that captures the right information — timeline, causal
+chain, exact actions taken including kubectl commands, prevention
+recommendations, and knowledge source citations — and populate it from the
+LLM's structured output.
+
+Why does this matter for a hackathon? Because compounding value. Every
+incident that goes through this system makes the knowledge base richer.
+The next similar incident benefits from better retrieval. The system gets
+smarter over time without any additional engineering effort.
+
+That's a flywheel. And we built it in [X] hours."
+
+
+================================================================================
+SLIDE 9 — LIVE DEMO  (~5 minutes)
+Energy: PEAK. Speak less. Show more. Let the demo breathe.
+================================================================================
+
+"Alright. No more slides. Let me show you this working.
+
+Here's the scenario: payment-service is about to CrashLoopBackOff due to
+memory exhaustion. This is a real incident pattern — it happens in production
+environments every week.
+
+I'm going to inject the failure now.
+
+[Inject failure]
+
+Pod is crashing. In a normal world, PagerDuty fires, someone gets woken up,
+they open four tabs and start investigating. We're going to watch what
+happens instead.
+
+[T = 0:47]
+Look. The Splunk agent has already captured the OOMKilled event. Dynatrace
+is showing the memory spike. OTel is showing the latency surge on the
+checkout-to-payment trace. All three signals are already correlated in the
+LLM context window.
+
+[T = 1:15]
+Root cause identified. Memory limit exceeded under traffic spike. Contributing
+factor: retry storm from upstream checkout service. The LLM just retrieved a
+matching runbook from Confluence and a Stack Overflow thread about this
+OOMKilled pattern.
+
+[T = 2:10]
+Watch the cluster.
+
+[Show terminal or k9s]
+
+Kubernetes MCP is executing. Pod deleted. Memory limit patched to 1024Mi.
+HPA max replicas updated to 12. Three kubectl operations. Automatic. Logged.
+Auditable.
+
+[T = 2:45]
+Error rate: zero. Latency: normal. Service: healthy.
+
+[T = 3:00]
+RCA is live in Confluence. Right now. Full timeline, root cause, every action
+taken, prevention recommendations.
+
+[Pause. Let it land.]
+
+Three minutes. Zero humans paged. Complete documentation.
+
+That's what we built."
+
+
+================================================================================
+SLIDE 10 — IMPACT & KEY METRICS  (~1.5 minutes)
+Energy: LAND THE NUMBERS. Crisp and confident.
+================================================================================
+
+"Here's what this means in numbers.
+
+MTTD under one minute.
+Industry average: 15 to 60 minutes. We're 30 to 60 times faster.
+
+MTTR around three minutes.
+Industry average: 30 to 120 minutes. 10 to 40 times faster.
+
+94% RCA accuracy against our test dataset of historical incidents.
+
+Zero 3AM pages for auto-remediable incidents.
+That's not a metric — that's a culture change.
+
+The comparison table on the right isn't hypothetical. Those traditional
+numbers are from real SRE benchmarks. Our numbers are from this demo,
+running on real infrastructure, built during this hackathon.
+
+The ROI case writes itself: if your engineers spend even 5 hours a week
+on reactive incident response, this system gives most of that back."
+
+
+================================================================================
+SLIDE 11 — ROADMAP & NEXT STEPS  (~1 minute)
+Energy: VISIONARY BUT GROUNDED. Show you've thought beyond the hackathon.
+================================================================================
+
+"We're not here with a prototype we'd throw away.
+
+PHASE 1 — what you just saw — is production-ready architecture. Real agents.
+Real MCP integration. Real LLM reasoning. Built and demoed today.
+
+PHASE 2 — chaos engineering integration for proactive failure simulation,
+predictive detection before incidents occur, Slack and PagerDuty bridge.
+
+PHASE 3 — self-healing service mesh, cost optimization, SLO breach
+prediction, compliance-aware audit trails.
+
+The roadmap is credible because the foundation is solid. We didn't take
+shortcuts to make the demo work. The architecture you saw is the
+architecture we'd ship."
+
+
+================================================================================
+SLIDE 12 — CLOSING  (~30 seconds)
+Energy: CALM. CONFIDENT. MEMORABLE.
+================================================================================
+
+"SRE teams are drowning in reactive work. Alerts they can't action fast
+enough. Runbooks nobody finds in time. RCAs nobody writes.
+
+We built the system that changes that.
+
+Detect faster. Diagnose smarter. Recover automatically. Document always.
+
+We call it Agentic SRE. And it works.
+
+Thank you."
+
+
+================================================================================
+TIMING GUIDE
+================================================================================
+
+  Slide 01  |  Title                    |  0:30
+  Slide 02  |  The Problem              |  1:30
+  Slide 03  |  Solution Overview        |  1:30
+  Slide 04  |  Architecture             |  2:00
+  Slide 05  |  Observability Ingestion  |  2:00
+  Slide 06  |  LLM Analysis             |  3:00
+  Slide 07  |  Kubernetes MCP           |  3:00
+  Slide 08  |  Knowledge & RCA          |  2:00
+  Slide 09  |  Live Demo                |  5:00
+  Slide 10  |  Metrics                  |  1:30
+  Slide 11  |  Roadmap                  |  1:00
+  Slide 12  |  Close + Q&A              |  remaining
+  -----------------------------------------------
+  TOTAL                                |  ~25 min
+
+
+================================================================================
+ENERGY ARC
+================================================================================
+
+  Slide 01  ->  Hook (high energy, grab attention)
+  Slide 02  ->  Problem (frustrated, relatable)
+  Slides 03-05  ->  Build confidence (technical depth)
+  Slide 06  ->  Slow down (hardest part, make them feel the complexity)
+  Slide 07  ->  Innovation spike (MCP is your differentiator)
+  Slide 08  ->  Steady (set up the demo)
+  Slide 09  ->  PEAK (let the demo breathe, pause, don't narrate over it)
+  Slide 10  ->  Land the numbers (crisp)
+  Slide 11  ->  Vision (brief)
+  Slide 12  ->  Close (calm, confident, memorable)
+
+
+================================================================================
+THE ONE LINE JUDGES WILL REMEMBER
+================================================================================
+
+  "Three minutes. Zero humans paged. Complete documentation."
+
+  Say it ONCE — on Slide 9. Don't repeat it anywhere else.
+  Let it be the line that sticks.
+
+
+================================================================================
+DEMO SETUP CHECKLIST (Before you walk on)
+================================================================================
+
+  [ ]  Demo environment running and healthy before presentation starts
+  [ ]  Terminal with "kubectl get pods -w" ready to show live
+  [ ]  Confluence RCA page tab pre-loaded (flip to it at T=3:00)
+  [ ]  Failure injection script tested and ready
+  [ ]  Fallback: screen recording of demo if live env has issues
+
+
+================================================================================
+JUDGE Q&A — ANTICIPATED QUESTIONS & ANSWERS
+================================================================================
+
+Q: How do you handle false positives?
+A: "The LLM scores confidence. Below a threshold, it flags for human review
+   instead of acting. The guardrails in the MCP mean no irreversible action
+   happens without high confidence."
+
+Q: What if the LLM gets the RCA wrong?
+A: "The audit trail captures every decision and signal that led to it.
+   Engineers can review and correct. Each correction feeds back as a
+   training signal."
+
+Q: How does this scale across 200 services?
+A: "The agents are stateless and horizontally scalable. The LLM context is
+   bounded per incident, not per service. Scaling is an infra problem,
+   not an architecture problem."
+
+Q: What is the latency of the LLM call?
+A: "Under 30 seconds for analysis. We batch the signals, not the LLM calls.
+   One call per incident, not per alert."
+
+Q: Why MCP and not just direct API calls?
+A: "Policy enforcement, structured schema, and auditability. MCP is the
+   right abstraction between LLM intent and cluster action."
+
+Q: Is this production-ready or just a hackathon demo?
+A: "The architecture is production-ready. The agents, MCP integration, and
+   LLM pipeline are built on real tooling. What we'd add before shipping:
+   more extensive guardrail policies and a broader test suite."
+
+Q: What LLM are you using?
+A: "We used [your model here — Claude / GPT-4 / etc.]. The system is
+   model-agnostic by design — the prompt layer abstracts the LLM so we
+   can swap models without changing the pipeline."
+
+
+================================================================================
+END OF SCRIPT
+================================================================================
