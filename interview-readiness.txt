@@ -1664,5 +1664,165 @@ This gives a clean GitOps workflow where every deployment to EKS is driven by ch
 
 ============================================================================================================
 
+In EKS, if you want a Pod (or all Pods of a workload) to run **only in a specific Availability Zone (AZ)**, you can use **node labels with nodeSelector** or **node affinity**.
+
+## Option 1: Use Node Affinity (Recommended)
+
+EKS worker nodes are automatically labeled with their AZ:
+
+```bash
+kubectl get nodes --show-labels | grep topology.kubernetes.io/zone
+```
+
+Example label:
+
+```text
+topology.kubernetes.io/zone=ap-south-1a
+```
+
+Deployment example:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                - ap-south-1a
+      containers:
+      - name: app
+        image: nginx
+```
+
+This ensures Pods are scheduled **only on nodes in ap-south-1a**.
+
+---
+
+## Option 2: Use nodeSelector
+
+Simpler but less flexible:
+
+```yaml
+spec:
+  nodeSelector:
+    topology.kubernetes.io/zone: ap-south-1a
+```
+
+---
+
+## Option 3: Dedicated Node Group for One AZ
+
+A common production approach is:
+
+1. Create a managed node group in only one subnet/AZ.
+2. Label the nodes.
+
+Example:
+
+```bash
+kubectl label node ip-10-0-1-10 dedicated=payments
+```
+
+Then:
+
+```yaml
+spec:
+  nodeSelector:
+    dedicated: payments
+```
+
+This gives more control than relying solely on AZ labels.
+
+---
+
+## Verify Pod Placement
+
+Check where Pods are running:
+
+```bash
+kubectl get pods -o wide
+```
+
+Find the node:
+
+```bash
+kubectl describe pod <pod-name>
+```
+
+Find the node's AZ:
+
+```bash
+kubectl get node <node-name> \
+  -L topology.kubernetes.io/zone
+```
+
+---
+
+## Important Considerations
+
+### High Availability Trade-off
+
+If you restrict Pods to a single AZ:
+
+* If that AZ has issues, Pods cannot be scheduled elsewhere.
+* You lose the multi-AZ resilience that EKS is designed to provide.
+
+For example:
+
+```text
+EKS Cluster
+├── ap-south-1a  ← Pods allowed
+├── ap-south-1b
+└── ap-south-1c
+```
+
+If `ap-south-1a` becomes unavailable, your workload may go down.
+
+### When Single-AZ Placement Makes Sense
+
+* Workloads that must stay close to a zonal resource such as an EBS volume.
+* Cost-sensitive workloads where cross-AZ traffic should be avoided.
+* Stateful applications with zone-specific storage architecture.
+* Testing or development environments.
+
+### Better Pattern for Stateful Workloads
+
+Instead of hard-coding a single AZ, use:
+
+* `StatefulSet`
+* EBS CSI driver
+* `volumeBindingMode: WaitForFirstConsumer`
+
+Kubernetes will place Pods and volumes in the same AZ automatically.
+
+Example StorageClass:
+
+```yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+```
+
+This is generally the preferred way to handle AZ-aware scheduling for applications using EBS storage.
 
 
