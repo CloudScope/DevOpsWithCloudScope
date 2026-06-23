@@ -1,0 +1,16 @@
+Thank you for the opportunity. My name is Raghunath Pradhan, and I am a Senior DevOps Engineer with over 9 years of experience designing, building, and operating large-scale cloud infrastructure — primarily on AWS and Kubernetes.
+
+Currently, I am working at JP Morgan Chase as a Software Engineer III in a Senior DevOps capacity, where I lead the design and operations of production EKS clusters, end-to-end CI/CD pipelines using Jenkins and Spinnaker, and an observability platform built on Grafana and Splunk. One of the things I am most proud of in this role is driving toward 99.99% SLO targets with defined SLIs and error budgets, and leading our chaos engineering programme using Gremlin to proactively surface failure modes before they impact customers.
+
+Pause briefly here — let the interviewer absorb JP Morgan and the SLO/chaos engineering points.
+
+What makes my profile a little different from a typical DevOps engineer is that I have been working at the intersection of DevOps and AI. I have hands-on production experience deploying AI Agents and MCP — Model Context Protocol — servers, setting up LLM observability using Arize Phoenix, and managing ML model lifecycles with MLflow. I also use GitHub Copilot and Claude AI daily for infrastructure automation and incident analysis, which has meaningfully accelerated my workflows.
+
+This is your strongest differentiator — say it confidently and clearly.
+
+Before JP Morgan, I spent over two years at Advance Auto Parts, where I owned the GitHub Actions CI/CD platform and managed containerised microservices on OpenShift Kubernetes clusters. Prior to that I worked at PwC and Cognizant, where I built my core DevOps foundation across Azure DevOps, AWS CodeBuild, Spinnaker, and Terraform. I hold a Certified Kubernetes Administrator certification, AWS Solutions Architect, AWS DevOps Engineer Professional, and Microsoft DevOps Engineer Expert credentials.
+
+I am excited about this role because it sits right at the intersection of platform engineering, SRE, and GitOps — which is exactly the space I have been working in and want to go deeper in. The focus on high availability, infrastructure automation, and Kubernetes at scale aligns perfectly with my experience, and I am keen to bring both my technical depth and my GenAI tooling experience to this team.
+
+End with a forward-looking statement — shows motivation, not just history.
+
