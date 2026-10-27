@@ -15,3 +15,78 @@ April 2024 I’ve been a Software Engineer III at J.P. Morgan Chase in Bangalore
 “On security, I use least-privilege IAM, AWS Secrets Manager, and External Secrets Operator brings those secrets into Kubernetes workloads. For reliability, I use Grafana and Splunk for dashboards and alerting, and I run resiliency testing with Gremlin.
 
 I also work on cost. I use AWS Cost Explorer for FinOps, and I’ve right-sized resources and improved capacity planning. [Add a cost saving number if you have one.] Much of my day-to-day work involves Python and Bash scripts that automate provisioning, health checks, and runbooks, which cut a lot of manual toil.
+
+
+
+
+
+Here's a design you can walk through in an interview. It's language-agnostic at the pipeline level, with Java and Python differences called out where they matter.
+
+**Overview**
+
+```
+Commit/PR → Static checks & tests → Build image → Scan, SBOM, sign → Push to ECR
+  → Update GitOps repo → Argo CD deploys to Dev → Automated tests
+  → Promote to QA → UAT (approval) → Prod blue-green with analysis → Verify
+```
+
+**1. Pull request checks (fast feedback)**
+- Lint and format: Checkstyle or SpotBugs for Java, Ruff or Flake8 for Python.
+- Unit tests with coverage thresholds: JUnit for Java (Maven or Gradle), pytest for Python.
+- Secret detection (Gitleaks) and SAST (SonarQube quality gate).
+- Dependency scanning: OWASP Dependency-Check for Java, pip-audit for Python.
+- Branch protection requires these checks to pass before merge.
+
+**2. Build**
+- Build once, then promote the same artifact through every environment. Never rebuild for prod.
+- Use multi-stage Dockerfiles. Java builds a JAR in a Maven or Gradle stage and runs on a slim JRE image. Python installs locked dependencies (pip-tools or Poetry) and runs with Gunicorn or Uvicorn.
+- Run as non-root, with a read-only filesystem where possible. Distroless or minimal base images reduce the attack surface.
+- Tag images with the Git SHA, not `latest`. Make the ECR repo tags immutable.
+
+**3. Image security**
+- Scan the image with Trivy or ECR scanning, and fail on critical vulnerabilities.
+- Generate an SBOM with Syft.
+- Sign the image with Cosign, so the cluster can verify where it came from.
+
+**4. Integration testing**
+- Run API and contract tests against an ephemeral environment, such as a short-lived namespace or docker-compose with real dependencies like Postgres or Kafka.
+
+**5. Deploy with GitOps**
+- The CI pipeline doesn't run `kubectl` against the cluster. It updates the image tag in a separate GitOps repo, usually as a pull request.
+- Each service has a Helm chart with environment-specific values files.
+- Argo CD watches that repo and syncs each environment. It also handles drift detection and rollback through Git.
+- Secrets stay out of Git. External Secrets Operator pulls them from AWS Secrets Manager, and pods access AWS through IRSA.
+
+**6. Promotion**
+- Dev deploys automatically on merge to main.
+- QA runs regression and performance tests automatically.
+- UAT and Prod require manual approval through GitHub environment protection rules or Argo CD sync windows.
+
+**7. Production release**
+- Use blue-green with Argo Rollouts, or a Service selector switch. Deploy the green stack, run smoke tests, then shift traffic.
+- Use Argo Rollouts analysis on Prometheus metrics such as error rate and p99 latency. If the analysis fails, the rollout rolls back automatically.
+- Keep the blue stack around for a set period so rollback is instant.
+
+**8. Runtime safety**
+- Set readiness and liveness probes, with startup probes for Java because JVM warm-up is slow.
+- Add a `preStop` hook and a `terminationGracePeriodSeconds` long enough to drain requests.
+- Use HPA for scaling and PodDisruptionBudgets so upgrades don't remove too many replicas.
+- Enforce policy with Kyverno or OPA: signed images only, no root containers, required resource limits.
+
+**9. Observability and feedback**
+- Dashboards and alerts for each service in Grafana or Datadog, with SLO-based alerts.
+- Deployment events feed into the same dashboards, so incidents can be traced back to a release.
+
+**Java vs. Python differences to mention**
+- Java: longer startup time, so use startup probes and tune heap with container-aware JVM flags. Jib is an option for building images without a Dockerfile.
+- Python: watch the worker count in Gunicorn against the pod's CPU limit, and pin dependencies carefully because builds are less reproducible without a lock file.
+
+**A 3-minute version for the interview**
+"I'd keep CI and CD separate. CI runs on every PR with linting, tests, SAST, and dependency scans. On merge, it builds one immutable image per commit, scans and signs it, and pushes it to ECR. Then it updates the image tag in our GitOps repo, and Argo CD deploys to Dev. Promotion to QA is automatic, and UAT and Prod need approval. Prod uses blue-green with Argo Rollouts and Prometheus analysis, so a bad release rolls back without manual work. Secrets come from Secrets Manager through External Secrets, and policy enforcement blocks unsigned or root images."
+
+**Likely follow-up questions**
+- How do you handle database migrations during a blue-green deploy? Expect the answer to be expand-and-contract migrations, so old and new versions can run together.
+- What happens if Argo CD and the cluster drift? Argo CD's self-heal reverts manual changes.
+- How do you handle a hotfix? Use a short-lived branch that goes through the same pipeline, with an expedited approval path. Don't bypass the pipeline.
+
+Your Jenkins, Spinnaker, Argo CD, and External Secrets experience fits this design well. Use those as your examples when you explain it. Only mention tools like Cosign, Kyverno, or Argo Rollouts if you've used them or can explain how they work, since follow-up questions often go there.
