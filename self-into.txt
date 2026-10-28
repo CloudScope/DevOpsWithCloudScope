@@ -25,7 +25,7 @@ Here's a design you can walk through in an interview. It's language-agnostic at 
 **Overview**
 
 ```
-Commit/PR → Static checks & tests → Build image → Scan, SBOM, sign → Push to ECR
+Commit/PR → Static checks & tests → Build image → Scan, Push to ECR
   → Update GitOps repo → Argo CD deploys to Dev → Automated tests
   → Promote to QA → UAT (approval) → Prod blue-green with analysis → Verify
 ```
@@ -45,8 +45,6 @@ Commit/PR → Static checks & tests → Build image → Scan, SBOM, sign → Pus
 
 **3. Image security**
 - Scan the image with Trivy or ECR scanning, and fail on critical vulnerabilities.
-- Generate an SBOM with Syft.
-- Sign the image with Cosign, so the cluster can verify where it came from.
 
 **4. Integration testing**
 - Run API and contract tests against an ephemeral environment, such as a short-lived namespace or docker-compose with real dependencies like Postgres or Kafka.
