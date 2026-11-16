@@ -404,3 +404,191 @@ spec:
 4. **Why ESO over Secrets Store CSI Driver?**
    * **ESO** creates a real, native `v1/Secret` object (works with environment variables, Helm values, and volume mounts).
    * **CSI Driver** requires mounting secrets as a volume first before they can optionally become K8s secrets.
+
+
+
+# System Design: Multi-Tenant EKS Cluster
+
+Here's a structure for this question, covering the five areas your interviewer may probe.
+
+## 1. Problem Analysis
+
+A multi-tenant cluster lets several teams or customers share compute, which cuts cost and operational overhead. The hard part is isolation. One tenant's runaway workload should not starve another, one tenant should not read another's secrets, and a platform upgrade should not take down everyone at once. Every design decision trades cost efficiency against isolation strength.
+
+Start by clarifying what "tenant" means. Internal teams sharing a platform carry different risk than external customers running untrusted code. That answer determines whether namespace-level isolation is enough or whether you need separate node pools or clusters.
+
+## 2. Requirements and Constraints
+
+Ask clarifying questions first. Good ones include:
+
+- **Tenant type:** Internal teams or external customers? I'd assume about 40 internal teams with mixed workloads, and no untrusted code.
+- **Scale:** Roughly how many nodes, pods, and services? I'll assume 200 nodes at peak, around 3,000 pods, and 1,000 services.
+- **Isolation needs:** Is network isolation required between tenants? Are there compliance requirements such as PCI or SOC 2?
+- **Cost model:** Do teams need chargeback by namespace or by node pool?
+- **Availability:** 99.95% for platform components, with tenant workloads sized to their own SLOs.
+- **Operations:** Who owns the platform, and how often do upgrades happen?
+
+**Functional requirements:** self-service namespace provisioning, per-tenant quotas, RBAC scoped to tenant namespaces, network policies, cost attribution, and a standard deployment path.
+
+**Non-functional requirements:** no tenant can exhaust cluster resources, a control-plane failure should not affect running workloads, and upgrades should be incremental.
+
+## 3. Architecture
+
+Here's a layered design:
+
+- **Control plane:** EKS managed control plane across multiple availability zones. AWS handles etcd and API server availability, so you focus on the data plane and platform add-ons.
+- **Node groups:** Separate managed node groups by workload class, such as general, memory-optimized, GPU, and a dedicated group for sensitive or high-compliance tenants. Use Karpenter for fast, cost-aware autoscaling within these groups.
+- **Tenant isolation layers:**
+  - *Namespace per tenant* as the basic unit, with labels for ownership and cost center.
+  - *ResourceQuota and LimitRange* to cap CPU, memory, and object counts per namespace.
+  - *RBAC* scoped to each tenant's namespace, with no cluster-wide write access for tenant users.
+  - *NetworkPolicy* default-deny in every namespace, with explicit allow rules. A CNI that enforces policy, such as Calico or the VPC CNI with network policy support, is required.
+  - *Pod Security Standards* set to `restricted` by default, with exceptions handled through review.
+  - *Dedicated node pools or taints* for tenants that need stronger isolation.
+- **Identity:** IAM Roles for Service Accounts (IRSA) or EKS Pod Identity so each workload gets its own AWS permissions, not the node role.
+- **Secrets:** External Secrets Operator or the Secrets Store CSI driver, pulling from AWS Secrets Manager with per-tenant IAM policies.
+- **Platform services:** Ingress controller (AWS Load Balancer Controller), metrics (Prometheus with per-tenant federation or labels), logging (Fluent Bit to a central store with tenant-tagged indexes), and GitOps (Argo CD, with one project per tenant).
+- **Provisioning:** A self-service flow where a tenant request creates a namespace, quota, RBAC bindings, and network policies from a single template, managed in Git.
+
+**Separate clusters when:** a tenant needs a different Kubernetes version, has a compliance boundary that namespaces cannot meet, or runs untrusted code. Mention this decision point explicitly, since many interviewers probe it.
+
+## 4. Data Model and Interfaces
+
+**Core entities:**
+
+- `Tenant`: id, name, owner team, tier, cost center, isolation class (shared, dedicated node pool, dedicated cluster).
+- `Namespace`: tenant id, name, quota profile, network policy profile, labels.
+- `QuotaProfile`: CPU, memory, storage, pod count, and object limits for each size class.
+- `Role binding`: tenant id, group or SSO identity, role (viewer, developer, admin).
+
+**Interfaces:**
+
+- **Provisioning API or self-service portal:** `POST /v1/tenants` takes a tenant spec and returns the rendered manifests or a pull request. Better still, the spec lives in Git and a controller reconciles it.
+- **Kubernetes API:** Tenants interact through `kubectl` and GitOps, scoped by RBAC. Platform teams never hand out cluster-admin.
+- **Cost reporting:** Node and pod metrics joined with namespace labels, exported to a billing dashboard.
+
+## 5. Scalability and Reliability
+
+**Load profile:** About 200 nodes and 3,000 pods, with bursts during deployments and batch jobs. Design for the burst, since scale-out lag causes pending pods.
+
+**Strategies:**
+
+- **Karpenter** provisions nodes in response to pending pods, choosing instance types and consolidating underused nodes. This is faster than Cluster Autoscaler for mixed workloads.
+- **Pod Disruption Budgets and topology spread constraints** keep replicas across AZs, so a single AZ failure doesn't remove a tenant's service.
+- **Priority classes** ensure critical platform components preempt tenant workloads when the cluster is full.
+- **Control-plane limits:** Watch API server load from controllers and CI systems. Large numbers of watches or list calls can slow the cluster for everyone, so use informers and reasonable reconcile intervals.
+- **Sharding:** If the cluster grows past comfortable limits (often several thousand nodes), split by region or workload class rather than pushing one cluster further.
+
+**Reliability:**
+
+- **Upgrades:** Upgrade the control plane first, then node groups one at a time with a maximum unavailable setting. Use canary node groups for new AMIs.
+- **Multi-AZ** for all node groups and platform add-ons. Run at least two replicas of cluster-critical components like CoreDNS, the ingress controller, and the Karpenter controller.
+- **Backup and recovery:** Back up cluster state and configuration through GitOps, and use Velero for persistent volume snapshots. Test restores regularly.
+- **Observability of the platform itself:** Alert on pending pod age, node readiness, API server latency, and quota saturation per tenant.
+- **Blast radius control:** Roll out platform changes to a non-production cluster first, and use admission policies to block risky changes across all tenants at once.
+
+## Interview Tips
+
+- Ask about tenant trust level before anything else. It changes the whole design.
+- Be explicit about the namespace-versus-cluster decision and what evidence would push you toward separate clusters.
+- Expect follow-ups on noisy neighbors, how you handle a tenant that exhausts a shared node, and how you upgrade without downtime.
+- Likely deep dives: network policy enforcement, how IRSA or Pod Identity limits blast radius, and how you prevent one tenant from affecting cluster-wide components through the API server.
+
+If you'd like, I can make this a Claude Doc like the last one, or run a mock interview on this question.
+
+
+----
+
+
+# System Design: Incident Analysis System
+
+Here's a structure you can walk through in the interview, covering the five areas your interviewer may probe.
+
+## 1. Problem Analysis
+
+Incident response is slow mostly because of information gathering, not fixing. During an outage, engineers piece together what changed, which alerts fired first, and whether this resembles a past incident. Those facts are scattered across PagerDuty, Prometheus, logs, deploy pipelines, chat, and tickets. After the incident, postmortems are often written from memory, so action items get lost and the same failures recur.
+
+The system should help during the incident (build a timeline, correlate changes, surface similar past incidents) and after it (structured postmortems, action tracking, trend analysis).
+
+One key insight to state early: **the analysis system must be more reliable than the systems it observes.** If it goes down with the production system, it's useless exactly when needed.
+
+## 2. Requirements and Constraints
+
+Before designing, ask clarifying questions. Good ones include:
+
+- **Scale:** Roughly how many services, alerts per day, and incidents per month? I'll assume about 1,500 services, 300k alerts/day, and 60 incidents/month.
+- **Telemetry depth:** Do we ingest raw logs and traces, or only alerts, deploys, and incident metadata? I'd assume alerts, deploys, config changes, and incident metadata, with logs and traces fetched on demand.
+- **Retention:** I'd keep incident records and timelines indefinitely, and raw events for about 30 days hot and 1 year cold.
+- **Latency:** Timeline updates within seconds of an event; similar-incident search in under 2 seconds.
+- **Availability:** 99.95% for the query/UI path, and higher during active incidents. Ingestion should tolerate short outages without data loss.
+- **Users:** On-call engineers, incident commanders, SRE leads, and engineering leadership who want MTTD/MTTR reporting.
+
+**Functional requirements:** ingest from multiple sources, build a unified incident timeline, correlate recent deploys with incident start, find similar past incidents, link runbooks, generate postmortem drafts, and track action items.
+
+**Non-functional requirements:** no single point of failure, graceful degradation, tenant and team isolation, and redaction of secrets and PII in captured payloads.
+
+## 3. Architecture
+
+Here's the high-level flow:
+
+- **Sources:** Alertmanager, Datadog, PagerDuty, CI/CD, Kubernetes events, feature flag systems, and Slack incident channels.
+- **Ingestion gateway:** Stateless HTTP/gRPC endpoints that authenticate, validate schema, and write to Kafka. Pollers handle sources with no webhooks.
+- **Message bus (Kafka):** Decouples producers from consumers and absorbs bursts. Topics are partitioned by service or incident key.
+- **Normalizer and correlator (stream processing, e.g., Flink or Kafka Streams):** Normalizes event schemas, deduplicates alerts, groups related alerts into candidate incidents using service topology and time windows, and tags events with the owning team.
+- **Storage:**
+  - *Timeline store* (Postgres for incidents and action items, ClickHouse or similar for high-volume events).
+  - *Search index* (OpenSearch) for full-text and similar-incident search.
+  - *Object storage* for raw payloads and postmortem artifacts.
+  - *Vector index (optional)* for semantic similarity on incident summaries.
+- **Analysis services:** Change correlator (ranks deploys and config changes by proximity and blast radius), similarity service, anomaly checks, and an optional LLM summarizer that drafts timelines from the structured data. The LLM should only summarize data the system has already stored and should be clearly labeled as a draft.
+- **Interfaces:** Query API, web UI, Slack bot for in-channel commands like `/incident timeline`, and export to postmortem docs.
+
+Separate this stack from production. Use a different cloud region or account, and keep a minimal fallback path, such as a static export of the latest timelines, that works when the main system is down.
+
+## 4. Data Model and Interfaces
+
+**Core entities:**
+
+- `Incident`: id, title, severity, status, start/detect/mitigate/resolve timestamps, owning team, commander.
+- `Event`: id, source, type (alert, deploy, config_change, human_note), service, timestamp (source time and ingest time), payload reference, and a dedupe key.
+- `Change`: id, service, commit or version, deployer, timestamp, and rollback status.
+- `Service`: id, owner, tier, and dependencies (for blast radius).
+- `ActionItem`: id, incident id, owner, due date, and status.
+
+Store timestamps in UTC, and keep both the source timestamp and ingest timestamp. Clock skew between systems is a common source of wrong timelines, so state how you'll handle it. Use NTP-synced sources and prefer source time when it's trustworthy.
+
+**Interfaces:**
+
+- **Ingestion:** `POST /v1/events` with an idempotency key so retries don't create duplicates.
+- **Query:** `GET /v1/incidents/{id}/timeline`, `GET /v1/incidents/{id}/similar`, `GET /v1/metrics/mttr?team=...&window=...`.
+- **Streaming:** Kafka topics for downstream consumers, such as a data warehouse or a SLO-reporting system.
+
+## 5. Scalability and Reliability
+
+**Load profile:** Steady state is about 3–4 events/second, but alert storms during major outages can spike 100× within minutes. Design for the spike, not the average.
+
+**Strategies:**
+
+- **Kafka partitioning** by service key preserves per-service ordering and spreads load. Size partitions for peak throughput and scale consumers horizontally.
+- **Backpressure and shedding:** When ingestion lags, drop or sample low-severity informational events first, and never drop incident-opening alerts.
+- **Per-source rate limits** prevent a misbehaving monitor from flooding the pipeline.
+- **Deduplication and grouping** at the stream layer reduce 10k alerts into a handful of candidate incidents, which cuts downstream cost.
+- **Tiered storage:** Hot data in ClickHouse for 30 days, then move to cheap object storage in Parquet. Queries on cold data are slower but acceptable for postmortems.
+- **Caching:** Cache active incident timelines in Redis. Reads during incidents are heavy and repetitive.
+- **Read/write separation:** Writes go to the primary; the UI reads from replicas, so a dashboard refresh never slows ingestion.
+
+**Reliability:**
+
+- Run every stateful component across at least three availability zones, with a second region for the query path.
+- **Self-monitoring:** Monitor the analysis system with a separate, minimal alerting path. Alert on Kafka consumer lag, ingestion error rate, and time since the last event from each major source. A silent source is often the first sign of a problem.
+- **Graceful degradation:** If the correlator fails, the timeline should still show raw events. If the LLM is unavailable, the structured timeline still works.
+- **SLOs for the platform itself:** For example, 99.9% of events visible in the timeline within 10 seconds, and 99.95% query availability.
+
+## Interview Tips
+
+- Spend the first 3–5 minutes on requirements. Interviewers reward clarifying questions.
+- Name tradeoffs explicitly. For example: "Stream correlation is more responsive but harder to debug than batch grouping, so I'd start with time-window grouping and add topology-aware grouping later."
+- Expect follow-ups on failure modes: What if Kafka is down? What if a deploy event arrives after the alert? What if two teams claim the same incident?
+- Likely deep dives: the correlation algorithm, how you measure MTTD and MTTR accurately, and how you prevent the analysis system from becoming another noisy alert source.
+
+If you'd like, I can run a mock interview with you, or work through the second likely question, such as designing a multi-region alerting pipeline or an SLO monitoring system.
