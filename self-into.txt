@@ -592,3 +592,93 @@ Store timestamps in UTC, and keep both the source timestamp and ingest timestamp
 - Likely deep dives: the correlation algorithm, how you measure MTTD and MTTR accurately, and how you prevent the analysis system from becoming another noisy alert source.
 
 If you'd like, I can run a mock interview with you, or work through the second likely question, such as designing a multi-region alerting pipeline or an SLO monitoring system.
+
+
+----
+
+
+# System Design: Multi-Tenant VPC Architecture
+
+Here's a structure for this question, covering the five areas your interviewer may probe.
+
+## 1. Problem Analysis
+
+A multi-tenant VPC design answers one question: how do several tenants share AWS network infrastructure without being able to reach each other, or the platform, unless explicitly allowed? The network is the outer boundary of isolation. A misconfigured route or security group can expose a tenant's data even when the application layer is correct.
+
+The design has to balance three things: strong isolation, operational simplicity for the platform team, and the ability for tenants to communicate with shared services such as logging, DNS, and identity. Most of the complexity comes from that last requirement.
+
+## 2. Requirements and Constraints
+
+Ask clarifying questions first. Good ones include:
+
+- **Tenant type:** Internal teams or external customers? I'll assume about 40 internal teams, plus a few customers with stricter isolation needs.
+- **Isolation level:** Do tenants need network isolation only, or also separate egress IPs, separate DNS, or separate compliance boundaries?
+- **Connectivity:** Do tenants need to reach each other, on-premises networks, or third-party SaaS? I'll assume they reach shared services and on-premises systems over Direct Connect, but not each other.
+- **Scale:** About 40 tenants, each with 2 to 5 VPCs across dev, staging, and production, plus a shared services layer.
+- **Compliance:** PCI or SOC 2 scope for some tenants? This affects logging, encryption, and whether PCI workloads can share a VPC with anything else.
+- **Growth:** How many new tenants per quarter, and do they need to self-serve?
+
+**Functional requirements:** tenant-specific VPCs or subnets, controlled egress to the internet, private connectivity to shared services, centralized DNS and logging, and automated provisioning.
+
+**Non-functional requirements:** no default cross-tenant routing, IP address space that does not collide, auditable changes to network rules, and no single point of failure in the connectivity path.
+
+## 3. Architecture
+
+Here's the layered design:
+
+- **Account structure:** Each tenant gets its own AWS account (or accounts per environment), organized under AWS Organizations with OUs. Account boundaries are the strongest isolation AWS offers, stronger than VPC boundaries alone. Use Control Tower or Account Factory to provision accounts from a standard baseline.
+- **Per-tenant VPCs:** Each account has its own VPC with three-tier subnets (public for load balancers, private for application workloads, isolated for databases). Spread subnets across at least three AZs.
+- **Shared services VPC:** A central account hosts DNS (Route 53 Resolver endpoints), egress inspection, logging collectors, and identity integrations. Tenants reach it through Transit Gateway attachments.
+- **Transit Gateway:** The hub that connects tenant VPCs, the shared services VPC, and on-premises networks through Direct Connect. Use separate TGW route tables per tenant or per isolation class, so a tenant's VPC only has routes to the shared services attachment and not to other tenants.
+- **Egress:** Route internet-bound traffic through a centralized egress VPC with NAT gateways and AWS Network Firewall, rather than giving each VPC its own internet gateway. This gives one place to enforce allow-lists and log outbound traffic.
+- **Ingress:** Public-facing tenant services use an Application Load Balancer in the public subnet, with AWS WAF attached. Internal services stay on private addressing.
+- **Private connectivity:** Use VPC endpoints (PrivateLink) for AWS APIs such as S3, STS, and Secrets Manager, so traffic to AWS services never crosses the internet. Expose tenant services to other accounts through PrivateLink rather than peering when only one endpoint needs to be reached.
+- **IP address management:** Allocate non-overlapping CIDR blocks from a central IPAM pool, so every tenant VPC can be attached to the Transit Gateway without address conflicts.
+- **Guardrails:** Service Control Policies block tenants from creating internet gateways, disabling flow logs, or modifying TGW route tables. AWS Config rules detect drift.
+
+**Peering versus Transit Gateway:** Peering is simpler and cheaper for a few VPCs, but it doesn't scale because it creates a mesh of connections and isn't transitive. Transit Gateway centralizes routing and gives per-tenant route control, so it's the better fit for 40 tenants.
+
+## 4. Data Model and Interfaces
+
+**Core entities:**
+
+- `Tenant`: id, name, isolation class (standard, PCI, or dedicated), owning team, cost center, account ids.
+- `VPC`: tenant id, account id, region, CIDR block (from IPAM), subnet layout, attachment id.
+- `TGWRouteTable`: name, associated attachments, propagated routes, static routes, isolation class.
+- `EgressPolicy`: tenant id, allowed domains or IP ranges, inspection profile.
+- `FlowLogRecord`: source, destination, action, bytes, account, timestamp. Used for audit and anomaly detection.
+
+**Interfaces:**
+
+- **Provisioning:** `POST /v1/tenants` takes a tenant spec and triggers Account Factory and a Terraform or CDK pipeline. The spec lives in Git, and the pipeline applies changes.
+- **IPAM:** `POST /v1/vpcs/allocate` requests a CIDR from the central pool, with a conflict check before allocation.
+- **Policy:** Egress allow-list changes go through pull requests, and the firewall rule set is reconciled from the repository.
+- **Observability:** VPC Flow Logs sent to a central S3 bucket and queried through Athena, with tenant-tagged records.
+
+## 5. Scalability and Reliability
+
+**Load profile:** The main scaling concerns are Transit Gateway throughput, NAT gateway bandwidth, and the number of route table entries, not CPU or memory. Design for peak data transfer and for the route limits.
+
+**Strategies:**
+
+- **Transit Gateway limits:** Each TGW attachment and route table has quota limits. Plan attachments per TGW and use multiple TGWs in different regions or by isolation class if you approach the limits.
+- **NAT and firewall throughput:** Use one NAT gateway per AZ in the egress VPC, and scale the Network Firewall endpoints per AZ. Watch bandwidth per NAT gateway, since a single gateway caps around 45 Gbps.
+- **IP exhaustion:** Use IPAM with alerts when a pool passes a utilization threshold, and reserve space for growth. Larger VPC CIDRs cost little, but renumbering later is painful.
+- **Cost control:** Keep east-west traffic within an AZ where possible, and watch cross-AZ and TGW data processing charges, which can dominate the bill.
+
+**Reliability:**
+
+- **Multi-AZ everywhere:** TGW attachments, NAT gateways, and firewall endpoints in each AZ, so losing one AZ does not cut off connectivity.
+- **Redundant Direct Connect:** Two connections on separate devices and locations, with a VPN backup through the Transit Gateway.
+- **Route validation:** Automated tests check that tenant route tables contain no unintended routes, and that a tenant cannot reach another tenant's CIDR.
+- **Change safety:** Network changes roll out through the pipeline with a plan step, a peer review, and a rollback path. A bad route change can take down many tenants at once, so treat network config as code with the same rigor as the application.
+- **Visibility:** Alert on flow log volume anomalies, dropped traffic from the firewall, and BGP session state on Direct Connect.
+
+## Interview Tips
+
+- Clarify the isolation level first. An account-per-tenant design is a different answer from a shared-account design with separate VPCs.
+- Explain why Transit Gateway with per-tenant route tables beats a peering mesh. This is a common follow-up.
+- Expect questions about overlapping CIDRs, how a tenant gets internet access, and how you prove isolation during an audit.
+- Likely deep dives: Transit Gateway route table design, centralized egress inspection, and how you handle PCI scope so that only the compliant tenant's traffic goes through the inspected path.
+
+If you'd like, I can make this a Claude Doc like the others, or run a mock interview on this question.
